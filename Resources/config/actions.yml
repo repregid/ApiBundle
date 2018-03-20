@@ -1,0 +1,43 @@
+list:
+    path:  ''
+    defaults:
+        _controller: repregid_api.controller.crud:listAction
+        groupSuffix: list
+    methods: [GET]
+
+view:
+    path:  '/{id}'
+    defaults:
+        _controller: repregid_api.controller.crud:viewAction
+        groupSuffix: detail
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+create:
+    path:  ''
+    defaults:
+        _controller: repregid_api.controller.crud:createAction
+        formType: '*'
+        formMethod: POST
+        groupSuffix: detail
+    methods: [POST]
+
+update:
+    path:  '/{id}'
+    defaults:
+        _controller: repregid_api.controller.crud:updateAction
+        formType: '*'
+        formMethod: PATCH
+        groupSuffix: detail
+    methods: [PATCH]
+    requirements:
+        id: '\d+'
+
+delete:
+    path:  '/{id}'
+    defaults:
+        _controller: repregid_api.controller.crud:deleteAction
+    methods: [DELETE]
+    requirements:
+        id: '\d+'

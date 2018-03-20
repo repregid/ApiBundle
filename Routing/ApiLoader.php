@@ -1,0 +1,408 @@
+<?php
+
+namespace Repregid\ApiBundle\Routing;
+
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Inflector\Inflector;
+use Doctrine\ORM\Mapping\ManyToMany;
+use Doctrine\ORM\Mapping\ManyToOne;
+use Doctrine\ORM\Mapping\OneToMany;
+use Symfony\Component\Config\Loader\Loader;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
+use Repregid\ApiBundle\Action\Action;
+use Repregid\ApiBundle\Annotation\APIContext;
+use Repregid\ApiBundle\Annotation\APIEntity;
+use Repregid\ApiBundle\Annotation\APISubList;
+use Repregid\ApiBundle\DependencyInjection\Configurator;
+
+/**
+ * Class ApiLoader
+ * @package Repregid\ApiBundle\Routing
+ */
+final class ApiLoader extends Loader
+{
+    const ROUTE_PREFIX = 'repregid_api';
+
+    /**
+     * @var Configurator
+     */
+    protected $configurator;
+
+    /**
+     * @var Route[]
+     */
+    protected $importedRoutes = [];
+
+    /**
+     * @var array
+     */
+    protected $includedFiles = [];
+
+    /**
+     * ApiLoader constructor.
+     * @param Configurator $configurator
+     */
+    public function __construct(Configurator $configurator)
+    {
+        $this->configurator = $configurator;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function supports($resource, $type = null)
+    {
+        return 'repregid_api' === $type;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function load($resource, $type = null): RouteCollection
+    {
+        $this->includeFiles();
+        $this->importRoutes();
+
+        $annotations    = $this->readAnnotations();
+        $resultRoutes   = new RouteCollection();
+
+        $this->loadMainRoutes($annotations, $resultRoutes);
+        $this->loadSubRoutes($annotations, $resultRoutes);
+
+        return $resultRoutes;
+    }
+
+    /**
+     * @param APIEntity[] $annotations
+     * @param RouteCollection $resultRoutes
+     * @return void
+     */
+    private function loadMainRoutes($annotations, RouteCollection $resultRoutes)
+    {
+        /**
+         * 1. Read annotations from entity and build routes
+         */
+        foreach ($annotations as $className => $annotation) {
+
+            $shortName  = self::getShortName($className);
+            $contexts   = $annotation->getContexts();
+
+            foreach($contexts as $key => $context) {
+
+                /**
+                 * Let's using simple
+                 */
+                if(is_string($context)) {
+                    $key = $context;
+                    $context = new APIContext([]);
+                }
+
+                $contextConfig  = $this->getContextConfig($key);
+                $bindings       = $context->getBindings();
+
+                /**
+                 * Check all bindings
+                 */
+                foreach($bindings as $binding) {
+                    $this->getContextConfig($binding);
+                }
+
+                $contextRoutes = new RouteCollection();
+
+                $uri = $context->getUri() ?? lcfirst(Inflector::pluralize($shortName));
+                $url =
+                    '/'.trim($contextConfig['url'], '/').
+                    '/'.trim($uri, '/');
+
+                /**
+                 * If "default" action exists, adding all actions from config.
+                 */
+                $actions = $context->getActions();
+                $actions = $this->replaceDefault($actions, $contextConfig['actions']);
+
+                $contextTypes   = $context->getTypes();
+                $contextGroups  = $context->getSerializationGroups();
+
+                $actionNames = array_unique($actions);
+                $actions = [];
+
+                foreach($actionNames as $actionName) {
+                    $actions[$actionName] = [
+                        'type'      => $contextTypes[$actionName] ?? $contextTypes['all'] ?? '' ,
+                        'groups'    => $contextGroups[$actionName] ?? $contextGroups['all'] ?? [],
+                    ];
+                }
+
+                foreach($actions as $actionName => $actionParams) {
+
+                    $formType   = $actionParams['type'] ?: $annotation->getType();
+                    $action     = $this->getAction($actionName, $formType);
+
+                    $groupSuffix    = $action->getDefault('groupSuffix');
+                    $defaultGroups  = $groupSuffix ? [$key.'_'.$groupSuffix] : [];
+
+                    foreach($bindings as $binding) {
+                        $defaultGroups[] = $binding.'_'.$groupSuffix;
+                    }
+
+                    $groups = $actionParams['groups'] ? $this->replaceDefault($actionParams['groups'], $defaultGroups) : $defaultGroups;
+
+                    $action->addDefaults([
+                        'entity'    => $className,
+                        'groups'    => $groups
+                    ]);
+
+                    $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
+                }
+                $contextRoutes->addPrefix($url);
+                foreach($contextRoutes as $contextRoute) {
+                    $contextRoute->setPath(rtrim($contextRoute->getPath(), '/'));
+                }
+                $resultRoutes->addCollection($contextRoutes);
+            }
+        }
+    }
+
+    /**
+     * @param APIEntity[] $annotations
+     * @param RouteCollection $resultRoutes
+     * @return void
+     */
+    private function loadSubRoutes($annotations, RouteCollection $resultRoutes)
+    {
+        foreach ($annotations as $className => $annotation) {
+
+            $subLists   = $annotation->getSubLists();
+
+            foreach ($subLists as $subList) {
+
+                $listRoute = $this->getRouteName($subList->getListContext(), $subList->getListClass(), Action::ACTION_LIST);
+                $viewRoute = $this->getRouteName($subList->getViewContext(), $subList->getViewClass(), Action::ACTION_VIEW);
+
+                $list = $resultRoutes->get($listRoute);
+                $view = $resultRoutes->get($viewRoute);
+
+                if(!$view || !$list) {
+                    continue;
+                }
+
+                $list = clone $list;
+
+                $name   = $viewRoute.'_'.$listRoute;
+                $uri    = self::getShortName($subList->getListClass());
+                $list
+                    ->setPath($view->getPath().'/'.lcfirst(Inflector::pluralize($uri)))
+                    ->setRequirement('id', '\d')
+                    ->setDefault('field', $subList->getField())
+                    ->setDefault('subViewClass', $subList->getViewClass())
+                ;
+
+                $resultRoutes->add($name, $list);
+            }
+        }
+    }
+
+    /**
+     * @param $class
+     * @return mixed
+     */
+    private static function getShortName($class)
+    {
+        $parts = explode('\\', $class);
+
+        return end($parts);
+    }
+
+    /**
+     * @param $context
+     * @param $className
+     * @param $action
+     * @return string
+     */
+    private function getRouteName($context, $className, $action)
+    {
+        return implode('_', [
+            self::ROUTE_PREFIX,
+            $context,
+            Inflector::tableize(self::getShortName($className)),
+            $action
+        ]);
+    }
+
+    /**
+     * Load all files from sourcePaths
+     *
+     * @return void
+     */
+    private function includeFiles()
+    {
+        $configuratorPaths  = $this->configurator->getEntityPaths();
+
+        /**
+         * 1. Load all files from sourcePaths
+         */
+        foreach ($configuratorPaths as $path) {
+
+            $finder = new Finder();
+            $finder->files()->in($path);
+
+            foreach ($finder as $file) {
+                $realPath = $file->getRealPath();
+
+                require_once $realPath;
+
+                $this->includedFiles[$realPath] = true;
+            }
+        }
+    }
+
+    /**
+     * Read all action configs and load routes
+     *
+     * @return void
+     */
+    private function importRoutes()
+    {
+        $configuratorActions    = $this->configurator->getActionPaths();
+        $configuratorActions[]  = $this->configurator->getDefaultActions();
+
+        foreach($configuratorActions as $actionsPath) {
+            foreach($this->import($actionsPath, 'yaml') as $key => $route) {
+                $this->importedRoutes[$key] = $route;
+            }
+        }
+    }
+
+    /**
+     * Read annotations from entities
+     *
+     * @return APIEntity []
+     * @throws \Doctrine\Common\Annotations\AnnotationException
+     * @throws \ReflectionException
+     */
+    private function readAnnotations()
+    {
+        $result = [];
+
+        foreach (get_declared_classes() as $className) {
+            $reader = new AnnotationReader();
+            $reflectionClass = new \ReflectionClass($className);
+
+            if (!isset($this->includedFiles[$reflectionClass->getFileName()])) {
+                continue;
+            }
+
+            /**
+             * @var $annotation APIEntity
+             */
+            $annotation = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
+
+            if ($annotation) {
+
+                $result[$className] = $annotation;
+
+                foreach($reflectionClass->getProperties() as $reflectionProperty) {
+
+                    $subLists = $reader->getPropertyAnnotations($reflectionProperty);
+
+                    foreach ($subLists as $subList) {
+                        if ($subList instanceof APISubList) {
+                            $rel =
+                                $reader->getPropertyAnnotation($reflectionProperty, 'Doctrine\\ORM\\Mapping\\ManyToOne') ?:
+                                $reader->getPropertyAnnotation($reflectionProperty, 'Doctrine\\ORM\\Mapping\\OneToMany') ?:
+                                $reader->getPropertyAnnotation($reflectionProperty, 'Doctrine\\ORM\\Mapping\\ManyToMany')
+                            ;
+
+                            if(!$rel) {
+                                continue;
+                            }
+
+                            $target = (FALSE === strrpos($rel->targetEntity, '\\'))     ?
+                                $reflectionClass->getNamespaceName().'\\'.$rel->targetEntity    :
+                                $rel->targetEntity;
+
+                            if($rel instanceof ManyToMany) {
+                                $subList->setViewClass($subList->getSide() === APISubList::SIDE_VIEW ? $target : $className);
+                                $subList->setListClass( $subList->getSide() === APISubList::SIDE_LIST ? $target : $className);
+                            } else {
+                                $subList->setViewClass($rel instanceof ManyToOne ? $target : $className);
+                                $subList->setListClass( $rel instanceof OneToMany ? $target : $className);
+                            }
+
+                            $annotation->addSubList($subList);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array $result
+     * @param array $replacement
+     * @param bool $replaceIfEmpty
+     * @param string $key
+     * @return array
+     */
+    private function replaceDefault(
+        array $result,
+        array $replacement,
+        bool $replaceIfEmpty = true,
+        string $key = 'default'
+    ) {
+        if (FALSE !== ($index = array_search($key, $result))) {
+            unset($result[$index]);
+            $result = array_merge($result, $replacement);
+        }
+
+        if(!$result && $replaceIfEmpty) {
+            $result = $replacement;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param $key
+     * @param $type
+     * @return Route
+     */
+    private function getAction($key, $type): Route
+    {
+        if(!isset($this->importedRoutes[$key])) {
+            throw new \InvalidArgumentException('API Action "'.$key.'" not found.');
+        }
+
+        $action = clone $this->importedRoutes[$key];
+        $actionType = $action->getDefault('formType');
+
+        if($actionType === '*') {
+            if(!$type) {
+                throw new \InvalidArgumentException('FormType must be specified for action "'.$key.'"');
+            }
+
+            $action->addDefaults(['formType' => $type]);
+        }
+
+        return $action;
+    }
+
+    /**
+     * @param $key
+     * @return array
+     */
+    private function getContextConfig($key)
+    {
+        $configuratorContexts = $this->configurator->getContexts();
+
+        if(!isset($configuratorContexts[$key])) {
+            throw new \InvalidArgumentException('API Context "'.$key.'" not found.');
+        }
+
+        return $configuratorContexts[$key];
+    }
+}

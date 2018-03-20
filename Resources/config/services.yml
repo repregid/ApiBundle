@@ -1,0 +1,12 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Repregid\ApiBundle\DependencyInjection\Configurator: ~
+    Repregid\ApiBundle\Routing\ApiLoader:
+        tags: ['routing.loader']
+
+    repregid_api.controller.crud:
+        class: '%repregid_api.controller.crud.class%'

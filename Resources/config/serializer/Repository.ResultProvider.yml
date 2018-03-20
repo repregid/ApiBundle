@@ -1,0 +1,16 @@
+Repregid\ApiBundle\Repository\ResultProvider:
+    exclusion_policy: ALL
+    properties:
+        pageSize:
+            expose: true
+            groups: ["result_provider"]
+    virtual_properties:
+        getResults:
+            serialized_name: items
+            groups: ["result_provider"]
+        getTotalCount:
+            serialized_name: itemCount
+            groups: ["result_provider"]
+        getTotalPages:
+            serialized_name: totalPages
+            groups: ["result_provider"]
