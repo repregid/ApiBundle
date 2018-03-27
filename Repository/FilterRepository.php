@@ -59,14 +59,14 @@ class FilterRepository extends EntityRepository
     public function addSorts(QueryBuilder $qb, Filter $filter)
     {
         foreach ($filter->getSort() as $order) {
+            if(NULL === $order->getAlias()) {
+                continue;
+            }
 
-            $alias = FALSE !== strpos($order->getField(), '.')
-                ? ''
-                : $qb->getRootAliases()[0] . '.';
+            $field = $order->getAlias() ?: $order->getField();
+            $field = $qb->getRootAliases()[0].(FALSE !== strpos($field, '.') ? '' : '.').$field;
 
-            $qb->addOrderBy(
-                $alias . $order->getField(),
-                $order->getOrder());
+            $qb->addOrderBy($field, $order->getOrder());
         }
 
         return $this;

@@ -3,7 +3,10 @@
 namespace Repregid\ApiBundle\Service\DataFilter;
 
 
+use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\Query\Expr\Comparison;
+use Doctrine\ORM\QueryBuilder;
+use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderExecuterInterface;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CollectionAdapterFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\EmbeddedFilterTypeInterface;
 use Lexik\Bundle\FormFilterBundle\Filter\Query\QueryInterface;
@@ -92,6 +95,22 @@ class FilterService
                 new Comparison($field, $comparison, ':'.$paramName),
                 array($paramName => $values['value'])
             );
+        };
+    }
+
+    /**
+     * @param string $newName
+     * @param string $newAlias
+     * @return \Closure
+     */
+    public static function getSharedFilter($newName, $newAlias): \Closure
+    {
+        return function (FilterBuilderExecuterInterface $qbe) use ($newName, $newAlias) {
+            $closure = function (QueryBuilder $filterBuilder, $alias, $joinAlias, Expr $expr) use ($newName, $newAlias) {
+                $filterBuilder->leftJoin($alias.'.'.$newName, $joinAlias);
+            };
+
+            $qbe->addOnce($qbe->getAlias().'.'.$newName, $qbe->getAlias().$newAlias, $closure);
         };
     }
 

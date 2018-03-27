@@ -23,6 +23,11 @@ class FilterOrder
     protected $order;
 
     /**
+     * @var string
+     */
+    protected $alias;
+
+    /**
      * FilterOrder constructor.
      * @param string $field
      * @param string $order
@@ -69,5 +74,24 @@ class FilterOrder
     public function getOrder(): string
     {
         return $this->order;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getAlias(): ?string
+    {
+        return $this->alias;
+    }
+
+    /**
+     * @param string $alias
+     * @return $this
+     */
+    public function setAlias($alias)
+    {
+        $this->alias = $alias;
+
+        return $this;
     }
 }

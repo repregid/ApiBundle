@@ -119,8 +119,10 @@ class FilterType extends AbstractType
         $filterSorts = $form->get('filter')->getConfig()->getOption('sorts', []);
 
         foreach($sorts as $key => $sort) {
-            if(!in_array($sort->getField(), $filterSorts)) {
+            if(!isset($filterSorts[$sort->getField()])) {
                 unset($sorts[$key]);
+            } elseif(is_string($filterSorts[$sort->getField()])) {
+                $sort->setAlias($filterSorts[$sort->getField()]);
             }
         }
 
