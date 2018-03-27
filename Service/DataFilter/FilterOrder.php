@@ -3,14 +3,15 @@
 namespace Repregid\ApiBundle\Service\DataFilter;
 
 
-use Doctrine\Common\Collections\Criteria;
-
 /**
  * Class FilterOrder
  * @package Repregid\ApiBundle\Service\DataFilter
  */
 class FilterOrder
 {
+    const ORDER_ASC     = 'ASC';
+    const ORDER_DESC    = 'DESC';
+
     /**
      * @var string
      */
@@ -26,7 +27,7 @@ class FilterOrder
      * @param string $field
      * @param string $order
      */
-    public function __construct(string $field, string $order = Criteria::ASC)
+    public function __construct(string $field, string $order = self::ORDER_ASC)
     {
         $this->field = $field;
         $this->order = $order;

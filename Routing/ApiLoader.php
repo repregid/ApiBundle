@@ -137,7 +137,8 @@ final class ApiLoader extends Loader
 
                 foreach($actions as $actionName => $actionParams) {
 
-                    $formType   = $actionParams['type'] ?: $annotation->getType();
+                    $filterType = $annotation->getFilterType();
+                    $formType   = $actionParams['type'] ?: $annotation->getFormType() ?: $annotation->getType(); //TODO: для совместимости (убрать)
                     $action     = $this->getAction($actionName, $formType);
 
                     $groupSuffix    = $action->getDefault('groupSuffix');
@@ -153,6 +154,10 @@ final class ApiLoader extends Loader
                         'entity'    => $className,
                         'groups'    => $groups
                     ]);
+
+                    if($filterType) {
+                        $action->addDefaults(['filterType' => $filterType]);
+                    }
 
                     $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
                 }

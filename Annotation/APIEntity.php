@@ -17,7 +17,17 @@ class APIEntity
     /**
      * @var string
      */
-    protected $type = '';
+    protected $type = '';  //TODO: для совместимости (убрать)
+
+    /**
+     * @var string
+     */
+    protected $formType = '';
+
+    /**
+     * @var string
+     */
+    protected $filterType = '';
 
     /**
      * @var APISubList []
@@ -34,8 +44,10 @@ class APIEntity
             throw new \InvalidArgumentException('You must define a "contexts" attribute for each APIEntity annotation. And it must be an array.');
         }
 
-        $this->contexts = $values['contexts'];
-        $this->type     = $values['type'] ?? '';
+        $this->contexts     = $values['contexts'];
+        $this->type         = $values['type'] ?? '';  //TODO: для совместимости (убрать)
+        $this->formType     = $values['formType'] ?? '';
+        $this->filterType   = $values['filterType'] ?? '';
     }
 
     /**
@@ -52,6 +64,22 @@ class APIEntity
     public function getType(): string
     {
         return $this->type;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFormType(): string
+    {
+        return $this->formType;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFilterType(): string
+    {
+        return $this->filterType;
     }
 
     /**

@@ -15,7 +15,6 @@ use Symfony\Component\DependencyInjection\Reference;
  */
 class RepregidApiExtension extends Extension
 {
-
     /**
      * {@inheritdoc}
      */
@@ -36,15 +35,13 @@ class RepregidApiExtension extends Extension
 
         $container->setParameter('repregid_api.controller.crud.class', $config['controller']);
 
+        $controller = $container->getDefinition('repregid_api.controller.crud');
+
         if($config['searchEngine']) {
-
             $container->register($config['searchEngine']);
-
             if (false === $container->hasDefinition($config['searchEngine'])) {
                 throw new \Exception("'".$config['searchEngine']."' search engine could not be found!");
             }
-
-            $controller = $container->getDefinition('repregid_api.controller.crud');
             $controller->addMethodCall('setSearchEngine', [new Reference($config['searchEngine'])]);
         }
     }

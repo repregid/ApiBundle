@@ -3,13 +3,15 @@
 namespace Repregid\ApiBundle\Controller;
 
 
-use Doctrine\Common\Persistence\ObjectRepository;
+use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\View\View;
+use Repregid\ApiBundle\Service\DataFilter\Filter;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Repregid\ApiBundle\Repository\FilterRepository;
-use Repregid\ApiBundle\Service\DataFilter\DataFilter;
 use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 
 /**
@@ -39,14 +41,6 @@ class CRUDController extends APIController
     }
 
     /**
-     * @return SearchEngineInterface
-     */
-    public function getSearchEngine(): ?SearchEngineInterface
-    {
-        return $this->searchEngine;
-    }
-
-    /**
      * @param SearchEngineInterface $searchEngine
      * @return $this
      */
@@ -59,9 +53,9 @@ class CRUDController extends APIController
 
     /**
      * @param string $entity
-     * @return ObjectRepository
+     * @return EntityRepository
      */
-    protected function getRepo(string $entity) : ObjectRepository
+    protected function getRepo(string $entity) : EntityRepository
     {
         return $this->getDoctrine()->getManager()->getRepository($entity);
     }
@@ -69,13 +63,19 @@ class CRUDController extends APIController
     /**
      * @param string $type
      * @param string $method
-     * @param array $groups
+     * @param array $options
+     * @param null $data
      * @return FormInterface
      */
-    protected function form(string $type, string $method = 'POST', array $groups = []): FormInterface
+    protected function form(
+        string $type,
+        string $method = 'POST',
+        array $options = [],
+        $data = null
+    ): FormInterface
     {
         $builder = $this->formFactory->createBuilder(
-            $type, null, ['validation_groups' => $groups]
+            $type, $data, $options
         );
 
         $builder->setMethod($method);
@@ -87,27 +87,47 @@ class CRUDController extends APIController
      * @param Request $request
      * @param string $entity
      * @param array $groups
+     * @param string $filterType - Тип формы фильтрации
+     * @param string $filterMethod
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
      * @param null $field - название поля фильтрации (для вложенных роутов)
      * @return View
      */
-    public function listAction(Request $request, string $entity, array $groups, $id = null, $field = null) : View
+    public function listAction(
+        Request $request,
+        string $entity,
+        array $groups,
+        string $filterType = DefaultFilterType::class,
+        string $filterMethod = 'GET',
+        $id = null,
+        $field = null
+    ) : View
     {
-        $filter = DataFilter::createFromRequest($request);
-        $repo   = $this->getRepo($entity);
+        $repo           = $this->getRepo($entity);
+        $filterBuilder  = $repo->createQueryBuilder('x');
 
         if(!$repo instanceof FilterRepository) {
             return $this->renderBadRequest('This Entity cannot be listed and filtered.');
         }
 
-        if($id && $field) {
-            $filter->addCondition($field, '=', $id);
+        $filter = new Filter();
+        $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
+        $form->handleRequest($request);
+
+        if($form->isSubmitted() && !$form->isValid()) {
+            return $this->renderFormError($form);
         }
 
-        $repo->setSearchEngine($this->searchEngine);
-        $data = $repo->findByFilter($filter);
+        $updater = $this->get('lexik_form_filter.query_builder_updater');
 
-        return $this->renderResultProvider($data, $groups);
+        $result = $repo
+            ->addFilter($filterBuilder, $form->get('filter'), $updater)
+            ->addSorts($filterBuilder, $filter)
+            ->addPaginator($filterBuilder, $filter)
+            ->addSearch($filterBuilder, $filter, $this->searchEngine)
+            ->createResultsProvider($filterBuilder, $filter);
+
+        return $this->renderResultProvider($result, $groups);
     }
 
     /**
