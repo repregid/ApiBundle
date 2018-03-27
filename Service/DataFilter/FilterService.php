@@ -22,10 +22,9 @@ class FilterService
     const OPERATOR_IS_NULL      = 'IS NULL';
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
 
-    const OPERATORS_COMPLEX     = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_SIMPLE      = ['<=', '>=', '>', '<', self::OPERATOR_LIKE, '='];
-
-    const AVAILABLE_OPERATORS   = self::OPERATORS_SIMPLE + self::OPERATORS_COMPLEX;
+    const OPERATORS_COMPLEX      = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
+    const OPERATORS_ONE_SIDE     = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
+    const OPERATORS_TWO_SIDES    = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '='];
 
     /**
      * @var array
@@ -91,10 +90,22 @@ class FilterService
 
             $paramName = sprintf('p_%s', str_replace('.', '_', $field));
 
-            return $filterQuery->createCondition(
-                new Comparison($field, $comparison, ':'.$paramName),
-                array($paramName => $values['value'])
-            );
+            $value  = $values['value'];
+            $expr   = $field.' '.$comparison;
+            $param  = [];
+
+            if(in_array($comparison, self::OPERATORS_TWO_SIDES)) {
+
+                if($comparison === self::OPERATOR_LIKE) {
+                    $comparison = 'LIKE';
+                    $value = "%$value%";
+                }
+
+                $expr   = new Comparison($field, $comparison, ':'.$paramName);
+                $param  = [$paramName => $value];
+            }
+
+            return $filterQuery->createCondition($expr, $param);
         };
     }
 
@@ -155,21 +166,19 @@ class FilterService
      */
     protected static function parseExpr($expr): ?array
     {
-        foreach (self::AVAILABLE_OPERATORS as $operator) {
-            $pattern = preg_quote($operator);
-            if (!in_array($operator, static::OPERATORS_SIMPLE)) {
-                $pattern = "\\s$pattern\\b";
-            }
-            $pattern = "/$pattern/";
+        $available = array_merge(self::OPERATORS_TWO_SIDES, self::OPERATORS_ONE_SIDE);
+
+        foreach ($available as $operator) {
+
+            $isOneSide  = in_array($operator, static::OPERATORS_ONE_SIDE);
+            $isComplex  = in_array($operator, static::OPERATORS_COMPLEX);
+            $pattern    = preg_quote($operator);
+            $pattern    = $isComplex ? "/\\s$pattern\\b/" : "/$pattern/";
+
             $dividedExpr = preg_split($pattern, $expr);
+
             if (count($dividedExpr) === 2) {
-                $value = trim($dividedExpr[1]);
-
-                if ($operator === '=?') {
-                    $operator = 'LIKE';
-                    $value = "%$value%";
-                }
-
+                $value = $isOneSide ? true : trim($dividedExpr[1]);
                 return [$dividedExpr[0], $operator, $value];
             }
         }
