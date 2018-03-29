@@ -127,6 +127,14 @@ class CRUDController extends APIController
             ->addSearch($filterBuilder, $filter, $this->searchEngine)
             ->createResultsProvider($filterBuilder, $filter);
 
+
+        /* // Testing. Just add '/' at the start of this line.
+            print($filterBuilder->getQuery()->getSQL());
+            print_r($filterBuilder->getQuery()->getParameters()->toArray());
+            die();
+         /*/
+         //*/
+
         return $this->renderResultProvider($result, $groups);
     }
 

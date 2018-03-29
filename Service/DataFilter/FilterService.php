@@ -194,24 +194,27 @@ class FilterService
                     continue;
                 }
             } else {
+
+                if(
+                    !array_key_exists($field, $this->operators) &&
+                    !array_key_exists($field, $this->sorts)
+                ) {
+                    $form->remove($childName);
+                    continue;
+                }
+
                 if(array_key_exists($field, $this->sorts)) {
-
                     $this->sorts[$field]->setAlias($alias);
+                }
 
-                } elseif (array_key_exists($field, $this->operators)) {
-
+                if (array_key_exists($field, $this->operators)) {
                     $isOneSide  = in_array($this->operators[$field], self::OPERATORS_ONE_SIDE);
 
                     $type       = $isOneSide ? CheckboxFilterType::class : get_class($childType);
                     $options    = $isOneSide ? [] : $config->getOptions();
-
                     $options    = array_replace($options, ['apply_filter' => self::getApplyFilter($this->operators[$field])]);
 
                     $form->add($childName, $type, $options);
-
-                } else {
-                    $form->remove($childName);
-                    continue;
                 }
             }
         }
