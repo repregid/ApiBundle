@@ -3,6 +3,7 @@
 namespace Repregid\ApiBundle\Service\DataFilter\Form\Type;
 
 use Repregid\ApiBundle\Service\DataFilter\Filter;
+use Repregid\ApiBundle\Service\DataFilter\FilterOrder;
 use Repregid\ApiBundle\Service\DataFilter\FilterService;
 use Repregid\ApiBundle\Service\DataFilter\Form\DataTransformer\SortTransformer;
 use Symfony\Component\Form\AbstractType;
@@ -26,10 +27,6 @@ class FilterType extends AbstractType
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        if(!$options['filterType']) {
-            throw new \Exception('filterType not found!');
-        }
-
         /**
          * FIELDS
          */
@@ -55,20 +52,10 @@ class FilterType extends AbstractType
         /**
          * LISTENERS
          */
-        $builder->get('filter')->addEventListener(
+        $builder->addEventListener(
             FormEvents::PRE_SUBMIT, [$this, 'filterListener']
         );
-
-        $builder->addEventListener(
-            FormEvents::POST_SUBMIT, [$this, 'sortsListener']
-        );
-
-        /**
-         * TRANSFORMERS
-         */
-        $builder->get('sort')->addModelTransformer(new SortTransformer());
     }
-
     /**
      * @param OptionsResolver $resolver
      */
@@ -77,7 +64,7 @@ class FilterType extends AbstractType
         $resolver->setDefaults([
             'data_class'            => Filter::class,
             'allow_extra_fields'    => true,
-            'filterType'            => null
+            'filterType'            => DefaultFilterType::class
         ]);
     }
 
@@ -97,39 +84,16 @@ class FilterType extends AbstractType
         $filter = $event->getData();
         $form   = $event->getForm();
 
-        $filterService = new FilterService();
+        !array_key_exists('filter', $filter)    && $filter['filter'] = '';
+        !array_key_exists('sort', $filter)      && $filter['sort'] = '-id';
 
-        $values     = $filterService->parseString($filter);
-        $operators  = $filterService->parseString($filter, true);
+        $filterService = new FilterService($filter['filter'], $filter['sort']);
 
-        $filterService::prepareForm($form, $operators);
+        $filterService->prepareFormField($form->get('filter'));
 
-        $event->setData($values);
-    }
+        $filter['sort']     = $filterService->getSorts();
+        $filter['filter']   = $filterService->getValues();
 
-    /**
-     * @param FormEvent $event
-     */
-    public function sortsListener(FormEvent $event)
-    {
-        $data   = $event->getData();
-        $form   = $event->getForm();
-        $sorts  = $data->getSort();
-
-        $filterSorts = $form->get('filter')->getConfig()->getOption('sorts', []);
-
-        foreach($sorts as $key => $sort) {
-            if(!isset($filterSorts[$sort->getField()])) {
-                unset($sorts[$key]);
-            } elseif(is_string($filterSorts[$sort->getField()])) {
-                $sort->setAlias($filterSorts[$sort->getField()]);
-            }
-        }
-
-        if(empty($sorts)) {
-            $sorts = Filter::getDefaultSort();
-        }
-
-        $data->setSort($sorts);
+        $event->setData($filter);
     }
 }

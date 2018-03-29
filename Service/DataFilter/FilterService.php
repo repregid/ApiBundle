@@ -7,8 +7,8 @@ use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\Query\Expr\Comparison;
 use Doctrine\ORM\QueryBuilder;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderExecuterInterface;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CheckboxFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CollectionAdapterFilterType;
-use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\EmbeddedFilterTypeInterface;
 use Lexik\Bundle\FormFilterBundle\Filter\Query\QueryInterface;
 use Symfony\Component\Form\FormInterface;
 
@@ -29,13 +29,135 @@ class FilterService
     /**
      * @var array
      */
-    protected $cache = [];
+    protected $values     = [];
+
+    /**
+     * @var array
+     */
+    protected $operators  = [];
+
+    /**
+     * @var array
+     */
+    protected $sorts      = [];
+
+    /**
+     * @return array
+     */
+    public function getValues(): array
+    {
+        return $this->values;
+    }
+
+    /**
+     * @return array
+     */
+    public function getOperators(): array
+    {
+        return $this->operators;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSorts(): array
+    {
+        return $this->sorts;
+    }
+
+    /**
+     * FilterService constructor.
+     *
+     * @param string $filter
+     * @param string $sort
+     */
+    public function __construct(string $filter, string $sort)
+    {
+        $this->parseFilter($filter);
+        $this->parseSorts($sort);
+    }
+
+    /**
+     * @param $string
+     */
+    protected function parseFilter($string)
+    {
+        $cache = [];
+
+        $decodedFilter  = urldecode($string);
+        $filterArray    = explode('&', $decodedFilter);
+
+        foreach ($filterArray as $condition) {
+            $selectedOperator = null;
+            $parsedCondition = $this->parseExpr($condition);
+            if ($parsedCondition !== null) {
+                $cache[] = $parsedCondition;
+            }
+        }
+
+        foreach($cache as $condition) {
+            $fields = explode('.', $condition[0]);
+            $fields = array_reverse($fields);
+
+            $value = $condition[2];
+            foreach ($fields as $field) {
+                $value = [$field => $value];
+            }
+
+            $this->values = array_merge_recursive($this->values, $value);
+
+            $this->operators[$condition[0]] = $condition[1];
+        }
+    }
+
+    /**
+     * @param $string
+     */
+    protected function parseSorts($string)
+    {
+        $sort = explode(',', $string);
+
+        foreach($sort as $item) {
+            $criteria   = $item[0] === '-' ? 'DESC' : 'ASC';
+            $path       = $item[0] === '-' ? substr($item, 1) : $item;
+            $field      = explode('.', $path);
+
+            $this->sorts[$path]   = new FilterOrder(end($field), $criteria);
+        }
+    }
+
+    /**
+     * @param $expr
+     * @return array|null
+     */
+    protected function parseExpr($expr): ?array
+    {
+        $available = array_merge(self::OPERATORS_TWO_SIDES, self::OPERATORS_ONE_SIDE);
+
+        foreach ($available as $operator) {
+
+            $isOneSide  = in_array($operator, static::OPERATORS_ONE_SIDE);
+            $isComplex  = in_array($operator, static::OPERATORS_COMPLEX);
+            $pattern    = preg_quote($operator);
+            $pattern    = $isComplex ? "/\\s$pattern\\b/" : "/$pattern/";
+
+            $dividedExpr = preg_split($pattern, $expr);
+
+            if (count($dividedExpr) === 2) {
+                $value = $isOneSide ? true : trim($dividedExpr[1]);
+                return [$dividedExpr[0], $operator, $value];
+            }
+        }
+
+        return null;
+    }
 
     /**
      * @param FormInterface $form
-     * @param array $operators
+     * @param string $name
+     * @param string $alias
      */
-    public static function prepareForm(FormInterface $form, array $operators): void
+    public function prepareFormField(FormInterface $form, string $name = '', string $alias = '')
     {
         /**
          * @var $child FormInterface
@@ -43,36 +165,54 @@ class FilterService
         foreach ($form->all() as $child) {
 
             $config     = $child->getConfig();
-            $formType   = $config->getType()->getInnerType();
-            $formName   = $child->getName();
+            $childName  = $child->getName();
+            $childType  = $config->getType()->getInnerType();
 
-            if(!isset($operators[$formName])) {
-                continue;
-            }
+            $field = $name.(!$name ? '' : '.').$childName;
 
-            if ($config->hasAttribute('add_shared')) {
+            if ($config->hasOption('shared_keys')) {
 
-                is_array($operators[$formName]) &&
-                self::prepareForm(
-                    $formType instanceof CollectionAdapterFilterType ? $child->get(0) : $child,
-                    $operators[$formName]
+                $sharedKeys = $config->getOption('shared_keys');
+
+                $options = array_replace(
+                    $config->getOptions(),
+                    ['add_shared' => self::getSharedFilter($sharedKeys[0], $sharedKeys[1])]
                 );
 
-            } elseif ($formType instanceof EmbeddedFilterTypeInterface) {
+                $form->add($childName, get_class($childType), $options);
 
-                is_array($operators[$formName]) &&
-                self::prepareForm($child, $operators[$formName]);
+                $child = $form->get($childName);
 
+                $this->prepareFormField(
+                    $childType instanceof CollectionAdapterFilterType ? $child->get(0) : $child,
+                    $field,
+                    $alias.$sharedKeys[1]
+                );
+
+                if($child->count() === 0) {
+                    $form->remove($childName);
+                    continue;
+                }
             } else {
+                if(array_key_exists($field, $this->sorts)) {
 
-                is_scalar($operators[$formName]) &&
-                $child->getParent()->add(
-                    $formName,
-                    get_class($formType),
-                    array_replace($config->getOptions(), [
-                    'apply_filter' => self::getApplyFilter($operators[$formName])
-                    ])
-                );
+                    $this->sorts[$field]->setAlias($alias);
+
+                } elseif (array_key_exists($field, $this->operators)) {
+
+                    $isOneSide  = in_array($this->operators[$field], self::OPERATORS_ONE_SIDE);
+
+                    $type       = $isOneSide ? CheckboxFilterType::class : get_class($childType);
+                    $options    = $isOneSide ? [] : $config->getOptions();
+
+                    $options    = array_replace($options, ['apply_filter' => self::getApplyFilter($this->operators[$field])]);
+
+                    $form->add($childName, $type, $options);
+
+                } else {
+                    $form->remove($childName);
+                    continue;
+                }
             }
         }
     }
@@ -123,66 +263,5 @@ class FilterService
 
             $qbe->addOnce($qbe->getAlias().'.'.$newName, $qbe->getAlias().$newAlias, $closure);
         };
-    }
-
-    /**
-     * @return array
-     */
-    public function parseString($string, $operators = false): array
-    {
-        if(!$this->cache) {
-            $decodedFilter  = urldecode($string);
-            $filterArray    = explode('&', $decodedFilter);
-
-            foreach ($filterArray as $condition) {
-                $selectedOperator = null;
-                $parsedCondition = self::parseExpr($condition);
-                if ($parsedCondition !== null) {
-                    $this->cache[] = $parsedCondition;
-                }
-            }
-        }
-
-        $values = [];
-
-        foreach($this->cache as $condition) {
-            $fields = explode('.', $condition[0]);
-            $fields = array_reverse($fields);
-
-            $value = $operators ? $condition[1] : $condition[2];
-            foreach ($fields as $field) {
-                $value = [$field => $value];
-            }
-
-            $values = array_merge_recursive($values, $value);
-        }
-
-        return $values;
-    }
-
-    /**
-     * @param $expr
-     * @return array|null
-     */
-    protected static function parseExpr($expr): ?array
-    {
-        $available = array_merge(self::OPERATORS_TWO_SIDES, self::OPERATORS_ONE_SIDE);
-
-        foreach ($available as $operator) {
-
-            $isOneSide  = in_array($operator, static::OPERATORS_ONE_SIDE);
-            $isComplex  = in_array($operator, static::OPERATORS_COMPLEX);
-            $pattern    = preg_quote($operator);
-            $pattern    = $isComplex ? "/\\s$pattern\\b/" : "/$pattern/";
-
-            $dividedExpr = preg_split($pattern, $expr);
-
-            if (count($dividedExpr) === 2) {
-                $value = $isOneSide ? true : trim($dividedExpr[1]);
-                return [$dividedExpr[0], $operator, $value];
-            }
-        }
-
-        return null;
     }
 }

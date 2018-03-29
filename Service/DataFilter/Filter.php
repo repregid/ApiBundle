@@ -8,14 +8,15 @@ namespace Repregid\ApiBundle\Service\DataFilter;
  */
 class Filter
 {
+    const FILTER_DEFAULT    = [];
     const PAGE_DEFAULT      = 1;
     const PAGE_SIZE_DEFAULT = 30;
     const QUERY_DEFAULT     = '';
 
     /**
-     * @var mixed
+     * @var array
      */
-    protected $filter;
+    protected $filter = self::FILTER_DEFAULT;
 
     /**
      * @var FilterOrder[]
@@ -42,8 +43,7 @@ class Filter
      */
     public function __construct()
     {
-        $this->sort     = self::getDefaultSort();
-        $this->query    = self::QUERY_DEFAULT;
+        $this->sort = self::getDefaultSort();
     }
 
     /**
@@ -51,19 +51,19 @@ class Filter
      */
     public static function getDefaultSort()
     {
-        return [new FilterOrder('id',  FilterOrder::ORDER_DESC)];
+        return ['id' => new FilterOrder('id',  FilterOrder::ORDER_DESC)];
     }
 
     /**
-     * @return mixed
+     * @return array
      */
-    public function getFilter()
+    public function getFilter(): array
     {
         return $this->filter;
     }
 
     /**
-     * @param mixed $filter
+     * @param array $filter
      * @return $this
      */
     public function setFilter($filter)

@@ -63,7 +63,7 @@ class FilterRepository extends EntityRepository
                 continue;
             }
 
-            $field = $order->getAlias() ?: $order->getField();
+            $field = $order->getAlias().'.'.$order->getField();
             $field = $qb->getRootAliases()[0].(FALSE !== strpos($field, '.') ? '' : '.').$field;
 
             $qb->addOrderBy($field, $order->getOrder());
