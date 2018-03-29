@@ -112,8 +112,8 @@ class CRUDController extends APIController
 
         $filter = new Filter();
         $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
-        $form->handleRequest($request);
 
+        $form->submit($request->query->all());
         if($form->isSubmitted() && !$form->isValid()) {
             return $this->renderFormError($form);
         }
