@@ -7,6 +7,7 @@ use Doctrine\Common\Inflector\Inflector;
 use Doctrine\ORM\Mapping\ManyToMany;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\OneToMany;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Routing\Route;
@@ -138,8 +139,8 @@ final class ApiLoader extends Loader
                 foreach($actions as $actionName => $actionParams) {
 
                     $filterType = $annotation->getFilterType();
-                    $formType   = $actionParams['type'] ?: $annotation->getFormType() ?: $annotation->getType(); //TODO: для совместимости (убрать)
-                    $action     = $this->getAction($actionName, $formType);
+                    $formType   = $actionParams['type'] ?: $annotation->getFormType();
+                    $action     = $this->getAction($actionName, $formType, $filterType);
 
                     $groupSuffix    = $action->getDefault('groupSuffix');
                     $defaultGroups  = $groupSuffix ? [$key.'_'.$groupSuffix] : [];
@@ -154,10 +155,6 @@ final class ApiLoader extends Loader
                         'entity'    => $className,
                         'groups'    => $groups
                     ]);
-
-                    if($filterType) {
-                        $action->addDefaults(['filterType' => $filterType]);
-                    }
 
                     $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
                 }
@@ -373,24 +370,30 @@ final class ApiLoader extends Loader
 
     /**
      * @param $key
-     * @param $type
+     * @param $formType
+     * @param $filterType
      * @return Route
      */
-    private function getAction($key, $type): Route
+    private function getAction($key, $formType, $filterType): Route
     {
         if(!isset($this->importedRoutes[$key])) {
             throw new \InvalidArgumentException('API Action "'.$key.'" not found.');
         }
 
         $action = clone $this->importedRoutes[$key];
-        $actionType = $action->getDefault('formType');
+        $actionType     = $action->getDefault('formType');
+        $actionFilter   = $action->getDefault('filterType');
 
         if($actionType === '*') {
-            if(!$type) {
+            if(!$formType) {
                 throw new \InvalidArgumentException('FormType must be specified for action "'.$key.'"');
             }
 
-            $action->addDefaults(['formType' => $type]);
+            $action->addDefaults(['formType' => $formType]);
+        }
+
+        if($actionFilter === '*') {
+            $action->addDefaults(['filterType' => $filterType ?: DefaultFilterType::class]);
         }
 
         return $action;

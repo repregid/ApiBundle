@@ -17,11 +17,6 @@ class APIEntity
     /**
      * @var string
      */
-    protected $type = '';  //TODO: для совместимости (убрать)
-
-    /**
-     * @var string
-     */
     protected $formType = '';
 
     /**
@@ -45,7 +40,6 @@ class APIEntity
         }
 
         $this->contexts     = $values['contexts'];
-        $this->type         = $values['type'] ?? '';  //TODO: для совместимости (убрать)
         $this->formType     = $values['formType'] ?? '';
         $this->filterType   = $values['filterType'] ?? '';
     }
@@ -56,14 +50,6 @@ class APIEntity
     public function getContexts(): array
     {
         return $this->contexts;
-    }
-
-    /**
-     * @return string
-     */
-    public function getType(): string
-    {
-        return $this->type;
     }
 
     /**
