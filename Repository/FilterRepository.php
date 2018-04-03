@@ -102,7 +102,7 @@ class FilterRepository extends EntityRepository
         if($filter->getQuery() && $searchEngine) {
             $ids = $searchEngine->findByTerm($filter->getQuery(), $this->_entityName);
 
-            $expr = new Comparison(self::ALIAS.'.id', 'IN', "(:valueQuery)");
+            $expr = new Comparison($qb->getRootAliases()[0].'.id', 'IN', "(:valueQuery)");
             $qb->andWhere(new Andx([$expr]));
             $qb->setParameter("valueQuery", $ids);
         }
