@@ -119,14 +119,17 @@ class CRUDController extends APIController
         }
 
         $updater = $this->get('lexik_form_filter.query_builder_updater');
-
-        $result = $repo
+        $repo
             ->addFilter($filterBuilder, $form->get('filter'), $updater)
             ->addSorts($filterBuilder, $filter)
             ->addPaginator($filterBuilder, $filter)
-            ->addSearch($filterBuilder, $filter, $this->searchEngine)
-            ->createResultsProvider($filterBuilder, $filter);
+            ->addSearch($filterBuilder, $filter, $this->searchEngine);
 
+        if($id && $field) {
+            $repo->addExtraFilter($filterBuilder, $field, '=', $id);
+        }
+
+        $result = $repo->createResultsProvider($filterBuilder, $filter);
 
         /* // Testing. Just add '/' at the start of this line.
             print($filterBuilder->getQuery()->getSQL());

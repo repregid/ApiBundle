@@ -109,4 +109,19 @@ class FilterRepository extends EntityRepository
 
         return $this;
     }
+
+    /**
+     * @param QueryBuilder $qb
+     * @param $field
+     * @param $operator
+     * @param $value
+     * @return $this
+     */
+    public function addExtraFilter(QueryBuilder $qb, $field, $operator, $value)
+    {
+        $expr = new Comparison($qb->getRootAliases()[0].'.'.$field, $operator, $value);
+        $qb->andWhere(new Andx([$expr]));
+
+        return $this;
+    }
 }
