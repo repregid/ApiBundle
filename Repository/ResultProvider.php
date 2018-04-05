@@ -33,7 +33,7 @@ class ResultProvider
     {
         $this->results      = $results;
         $this->totalCount   = $totalCount;
-        $this->pageSize     = $pageSize;
+        $this->pageSize     = $pageSize > 0 ? $pageSize : $totalCount;
     }
 
     /**

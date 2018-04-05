@@ -82,8 +82,10 @@ class FilterRepository extends EntityRepository
         $page       = $filter->getPage();
         $pageSize   = $filter->getPageSize();
 
-        $qb->setMaxResults($pageSize);
-        $qb->setFirstResult(($page - 1) * $pageSize);
+        if($pageSize > 0) {
+            $qb->setMaxResults($pageSize);
+            $qb->setFirstResult(($page - 1) * $pageSize);
+        }
 
         return $this;
     }
