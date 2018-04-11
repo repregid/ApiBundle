@@ -33,7 +33,7 @@ class ResultProvider
     {
         $this->results      = $results;
         $this->totalCount   = $totalCount;
-        $this->pageSize     = $pageSize > 0 ? $pageSize : $totalCount;
+        $this->pageSize     = $pageSize > 0 ? $pageSize : ($totalCount ?: 1);
     }
 
     /**
@@ -82,7 +82,7 @@ class ResultProvider
     /**
      * @return mixed|null
      */
-    public function getSingleResult(): ?mixed
+    public function getSingleResult()
     {
         return $this->results[0] ?? null;
     }
