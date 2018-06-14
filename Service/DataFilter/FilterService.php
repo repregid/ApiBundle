@@ -241,7 +241,9 @@ class FilterService
 
                 if($comparison === self::OPERATOR_LIKE) {
                     $comparison = 'LIKE';
+                    $value = mb_strtolower($value, 'UTF-8');
                     $value = "%$value%";
+                    $field = "LOWER($field)";
                 }
 
                 $expr   = new Comparison($field, $comparison, ':'.$paramName);
