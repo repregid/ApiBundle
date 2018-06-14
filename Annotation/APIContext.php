@@ -9,6 +9,8 @@ namespace Repregid\ApiBundle\Annotation;
  */
 class APIContext
 {
+    const DEFAULT_ID_REQUIREMENT = '\d+';
+
     /**
      * @var string
      */
@@ -68,6 +70,11 @@ class APIContext
     protected $bindings = [];
 
     /**
+     * @var string
+     */
+    protected $idRequirement = self::DEFAULT_ID_REQUIREMENT;
+
+    /**
      * APIEntity constructor.
      * @param $values
      */
@@ -78,6 +85,7 @@ class APIContext
         $this->types                = $values['types']                  ?? [];
         $this->serializationGroups  = $values['serializationGroups']    ?? [];
         $this->bindings             = $values['bindings']               ?? [];
+        $this->idRequirement        = $values['idRequirement']          ?? self::DEFAULT_ID_REQUIREMENT;
     }
 
     /**
@@ -118,5 +126,13 @@ class APIContext
     public function getBindings(): array
     {
         return $this->bindings;
+    }
+
+    /**
+     * @return string
+     */
+    public function getIdRequirement(): string
+    {
+        return $this->idRequirement;
     }
 }

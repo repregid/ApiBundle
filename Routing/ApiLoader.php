@@ -156,6 +156,10 @@ final class ApiLoader extends Loader
                         'groups'    => $groups
                     ]);
 
+                    if($action->hasRequirement('id')) {
+                        $action->setRequirement('id', $context->getIdRequirement());
+                    }
+
                     $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
                 }
                 $contextRoutes->addPrefix($url);
