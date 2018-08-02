@@ -5,9 +5,12 @@ namespace Repregid\ApiBundle\Controller;
 
 use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\View\View;
+use Repregid\ApiBundle\Event\Events;
+use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
 use Repregid\ApiBundle\Service\DataFilter\Filter;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,13 +34,20 @@ class CRUDController extends APIController
     protected $searchEngine;
 
     /**
+     * @var EventDispatcherInterface
+     */
+    protected $dispatcher;
+
+    /**
      * CRUDController constructor.
      *
      * @param FormFactoryInterface $formFactory
+     * @param EventDispatcherInterface $dispatcher
      */
-    public function __construct(FormFactoryInterface $formFactory)
+    public function __construct(FormFactoryInterface $formFactory, EventDispatcherInterface $dispatcher)
     {
         $this->formFactory  = $formFactory;
+        $this->dispatcher   = $dispatcher;
     }
 
     /**
@@ -85,8 +95,10 @@ class CRUDController extends APIController
 
     /**
      * @param Request $request
+     * @param string $context
      * @param string $entity
      * @param array $groups
+     * @param array $security - аттрибуты для isGranted
      * @param string $filterType - Тип формы фильтрации
      * @param string $filterMethod
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
@@ -95,8 +107,10 @@ class CRUDController extends APIController
      */
     public function listAction(
         Request $request,
+        string $context,
         string $entity,
         array $groups,
+        array $security,
         string $filterType = DefaultFilterType::class,
         string $filterMethod = 'GET',
         $id = null,
@@ -110,10 +124,19 @@ class CRUDController extends APIController
             return $this->renderBadRequest('This Entity cannot be listed and filtered.');
         }
 
+        foreach($security as $attribute) {
+            $this->denyAccessUnlessGranted($attribute);
+        }
+
         $filter = new Filter();
         $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
 
-        $form->submit($request->query->all());
+        $filterEvent =  new ExtraFilterFormEvent($entity);
+        $this->dispatcher->dispatch(Events::getExtraFilterEventName($context), $filterEvent);
+
+        $form->get('extraFilter')->setData(strval($filterEvent->getExtraFilter()) ?: '');
+
+        $form->submit($request->query->all(), false);
         if($form->isSubmitted() && !$form->isValid()) {
             return $this->renderFormError($form);
         }
@@ -143,35 +166,56 @@ class CRUDController extends APIController
 
     /**
      * @param Request $request
+     * @param string $context
      * @param string $entity
      * @param array $groups
+     * @param array $security
      * @param $id
      * @return View
      */
-    public function viewAction(Request $request, string $entity, array $groups, $id) : View
+    public function viewAction(
+        Request $request,
+        string $context,
+        string $entity,
+        array $groups,
+        array $security,
+        $id
+    ) : View
     {
         $repo = $this->getRepo($entity);
-        $data = $repo->find($id);
+        $item = $repo->find($id);
 
-        return $data ? $this->renderOk($data, $groups) : $this->renderNotFound();
+        foreach($security as $attribute) {
+            $this->denyAccessUnlessGranted($attribute, $item);
+        }
+
+        return $item ? $this->renderOk($item, $groups) : $this->renderNotFound();
     }
 
     /**
      * @param Request $request
+     * @param string $context
      * @param string $entity
      * @param array $groups
+     * @param array $security
      * @param string $formType
      * @param string $formMethod
      * @return View
      */
     public function createAction(
         Request $request,
+        string $context,
         string $entity,
         array $groups,
+        array $security,
         string $formType,
         string $formMethod
     ) : View
     {
+        foreach($security as $attribute) {
+            $this->denyAccessUnlessGranted($attribute);
+        }
+
         $item = new $entity();
         $form = $this->form($formType, $formMethod);
 
@@ -192,8 +236,10 @@ class CRUDController extends APIController
 
     /**
      * @param Request $request
+     * @param string $context
      * @param string $entity
      * @param array $groups
+     * @param array $security
      * @param string $formType
      * @param string $formMethod
      * @param $id
@@ -201,8 +247,10 @@ class CRUDController extends APIController
      */
     public function updateAction(
         Request $request,
+        string $context,
         string $entity,
         array $groups,
+        array $security,
         string $formType,
         string $formMethod,
         $id
@@ -214,6 +262,10 @@ class CRUDController extends APIController
 
         if(!$item) {
             return $this->renderNotFound();
+        }
+
+        foreach($security as $attribute) {
+            $this->denyAccessUnlessGranted($attribute, $item);
         }
 
         $form->setData($item);
@@ -234,17 +286,29 @@ class CRUDController extends APIController
 
     /**
      * @param Request $request
+     * @param string $context
      * @param string $entity
+     * @param array $security
      * @param $id
      * @return View
      */
-    public function deleteAction(Request $request, string $entity, $id) : View
+    public function deleteAction(
+        Request $request,
+        string $context,
+        string $entity,
+        array $security,
+        $id
+    ) : View
     {
         $repo = $this->getRepo($entity);
         $item = $repo->find($id);
 
         if(!$item) {
             return $this->renderNotFound();
+        }
+
+        foreach($security as $attribute) {
+            $this->denyAccessUnlessGranted($attribute, $item);
         }
 
         $entityManager = $this->getDoctrine()->getManager();

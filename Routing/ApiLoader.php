@@ -123,8 +123,9 @@ final class ApiLoader extends Loader
                 $actions = $context->getActions();
                 $actions = $this->replaceDefault($actions, $contextConfig['actions']);
 
-                $contextTypes   = $context->getTypes();
-                $contextGroups  = $context->getSerializationGroups();
+                $contextTypes       = $context->getTypes();
+                $contextGroups      = $context->getSerializationGroups();
+                $contextSecurity    = $context->getSecurity();
 
                 $actionNames = array_unique($actions);
                 $actions = [];
@@ -133,6 +134,7 @@ final class ApiLoader extends Loader
                     $actions[$actionName] = [
                         'type'      => $contextTypes[$actionName] ?? $contextTypes['all'] ?? '' ,
                         'groups'    => $contextGroups[$actionName] ?? $contextGroups['all'] ?? [],
+                        'security'  => $contextSecurity[$actionName] ?? $contextSecurity['all'] ?? []
                     ];
                 }
 
@@ -152,8 +154,10 @@ final class ApiLoader extends Loader
                     $groups = $actionParams['groups'] ? $this->replaceDefault($actionParams['groups'], $defaultGroups) : $defaultGroups;
 
                     $action->addDefaults([
+                        'context'   => $key,
                         'entity'    => $className,
-                        'groups'    => $groups
+                        'groups'    => $groups,
+                        'security'  => $actionParams['security']
                     ]);
 
                     if($action->hasRequirement('id')) {

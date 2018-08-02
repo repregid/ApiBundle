@@ -70,22 +70,27 @@ class FilterService
      *
      * @param string $filter
      * @param string $sort
+     * @param string $extraFilter
      */
-    public function __construct(string $filter, string $sort)
+    public function __construct(string $filter, string $sort, string $extraFilter = '')
     {
-        $this->parseFilter($filter);
+        $this->parseFilter($filter, $extraFilter);
         $this->parseSorts($sort);
     }
 
     /**
-     * @param $string
+     * @param $filter
+     * @param $extraFilter
      */
-    protected function parseFilter($string)
+    protected function parseFilter($filter, $extraFilter)
     {
         $cache = [];
 
-        $decodedFilter  = urldecode($string);
-        $filterArray    = explode('&', $decodedFilter);
+        $decodedFilter  = urldecode($filter);
+        $filterArray    = array_merge(
+            explode('&', $decodedFilter),
+            explode('&', $extraFilter)
+        );
 
         foreach ($filterArray as $condition) {
             $selectedOperator = null;

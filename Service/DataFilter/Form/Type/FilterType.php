@@ -35,6 +35,9 @@ class FilterType extends AbstractType
                 'allow_extra_fields'    => true,
                 'mapped'                => false
             ])
+            ->add('extraFilter', TextType::class, [
+                'mapped' => false
+            ])
             ->add('sort', TextType::class, [
                 'empty_data' => '-id'
             ])
@@ -83,11 +86,16 @@ class FilterType extends AbstractType
     {
         $filter = $event->getData();
         $form   = $event->getForm();
+        $extra  = $form->get('extraFilter');
 
-        !array_key_exists('filter', $filter)    && $filter['filter'] = '';
-        !array_key_exists('sort', $filter)      && $filter['sort'] = '-id';
+        !array_key_exists('filter', $filter)        && $filter['filter'] = '';
+        !array_key_exists('sort', $filter)          && $filter['sort'] = '-id';
 
-        $filterService = new FilterService($filter['filter'], $filter['sort']);
+        $filterService = new FilterService(
+            $filter['filter'],
+            $filter['sort'],
+            $extra->getData() ?: ''
+        );
 
         $filterService->prepareFormField($form->get('filter'));
 

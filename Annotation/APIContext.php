@@ -49,6 +49,18 @@ class APIContext
     protected $serializationGroups = [];
 
     /**
+     * Массив атрибутов для метода isGranted
+     * Так же поддерживаются атрибуты кастомных воттеров, в них будет передан выбранный объект
+     *
+     * security = {
+     *     "create"    = {"ROLE_ADMIN", "OBJECT_CAN_VIEW"},
+     * }
+     *
+     * @var array
+     */
+    protected $security = [];
+
+    /**
      * Связывание контекстов.
      *
      * В массив передаются именна контекстов с которыми нужно связать текущий.
@@ -86,6 +98,7 @@ class APIContext
         $this->serializationGroups  = $values['serializationGroups']    ?? [];
         $this->bindings             = $values['bindings']               ?? [];
         $this->idRequirement        = $values['idRequirement']          ?? self::DEFAULT_ID_REQUIREMENT;
+        $this->security             = $values['security']               ?? [];
     }
 
     /**
@@ -134,5 +147,13 @@ class APIContext
     public function getIdRequirement(): string
     {
         return $this->idRequirement;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSecurity(): array
+    {
+        return $this->security;
     }
 }
