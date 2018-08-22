@@ -1,6 +1,6 @@
 <?php
 
-namespace Repregid\ApiBundle\Repository;
+namespace Repregid\ApiBundle\Service\DataFilter;
 
 /**
  * Class ResultProvider

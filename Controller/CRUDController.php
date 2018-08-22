@@ -10,11 +10,11 @@ use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
 use Repregid\ApiBundle\Service\DataFilter\Filter;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
+use Repregid\ApiBundle\Service\DataFilter\QueryBuilderUpdater;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Repregid\ApiBundle\Repository\FilterRepository;
 use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 
 /**
@@ -120,10 +120,6 @@ class CRUDController extends APIController
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
 
-        if(!$repo instanceof FilterRepository) {
-            return $this->renderBadRequest('This Entity cannot be listed and filtered.');
-        }
-
         foreach($security as $attribute) {
             $this->denyAccessUnlessGranted($attribute);
         }
@@ -142,17 +138,17 @@ class CRUDController extends APIController
         }
 
         $updater = $this->get('lexik_form_filter.query_builder_updater');
-        $repo
-            ->addFilter($filterBuilder, $form->get('filter'), $updater)
-            ->addSorts($filterBuilder, $filter)
-            ->addPaginator($filterBuilder, $filter)
-            ->addSearch($filterBuilder, $filter, $this->searchEngine);
+
+        QueryBuilderUpdater::addFilter($filterBuilder, $form->get('filter'), $updater);
+        QueryBuilderUpdater::addSorts($filterBuilder, $filter);
+        QueryBuilderUpdater::addPaginator($filterBuilder, $filter);
+        QueryBuilderUpdater::addSearch($filterBuilder, $filter, $this->searchEngine);
 
         if($id && $field) {
-            $repo->addExtraFilter($filterBuilder, $field, '=', $id);
+            QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }
 
-        $result = $repo->createResultsProvider($filterBuilder, $filter);
+        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $filter);
 
         /* // Testing. Just add '/' at the start of this line.
             print($filterBuilder->getQuery()->getSQL());

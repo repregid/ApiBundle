@@ -5,8 +5,8 @@ namespace Repregid\ApiBundle\Controller;
 
 use FOS\RestBundle\Controller\FOSRestController;
 use FOS\RestBundle\View\View;
+use Repregid\ApiBundle\Service\DataFilter\ResultProvider;
 use Symfony\Component\HttpFoundation\Response;
-use Repregid\ApiBundle\Repository\ResultProvider;
 
 /**
  * Class APIController

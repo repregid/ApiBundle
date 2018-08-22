@@ -1,6 +1,6 @@
 <?php
 
-namespace Repregid\ApiBundle\Repository;
+namespace Repregid\ApiBundle\Service\DataFilter;
 
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query\Expr\Andx;
@@ -8,22 +8,21 @@ use Doctrine\ORM\Query\Expr\Comparison;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
-use Repregid\ApiBundle\Service\DataFilter\Filter;
 use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 use Symfony\Component\Form\FormInterface;
 
 /**
- * Class FilterRepository
+ * Class QueryBuilderUpdater
  * @package Repregid\ApiBundle\Repository
  */
-class FilterRepository extends EntityRepository
+class QueryBuilderUpdater
 {
     /**
      * @param QueryBuilder $qb
      * @param Filter $filter
      * @return ResultProvider
      */
-    public function createResultsProvider(QueryBuilder $qb, Filter $filter): ResultProvider
+    public static function createResultsProvider(QueryBuilder $qb, Filter $filter): ResultProvider
     {
         $pagerQB    = clone $qb;
         $pager      = new Paginator($pagerQB->getQuery());
@@ -39,24 +38,20 @@ class FilterRepository extends EntityRepository
      * @param QueryBuilder $qb
      * @param FormInterface $filter
      * @param FilterBuilderUpdaterInterface $updater
-     * @return $this
      */
-    public function addFilter(
+    public static function addFilter(
         QueryBuilder $qb,
         FormInterface $filter,
         FilterBuilderUpdaterInterface $updater
     ) {
         $updater->addFilterConditions($filter, $qb);
-
-        return $this;
     }
 
     /**
      * @param QueryBuilder $qb
      * @param Filter $filter
-     * @return $this
      */
-    public function addSorts(QueryBuilder $qb, Filter $filter)
+    public static function addSorts(QueryBuilder $qb, Filter $filter)
     {
         foreach ($filter->getSort() as $order) {
             if(NULL === $order->getAlias()) {
@@ -68,16 +63,13 @@ class FilterRepository extends EntityRepository
 
             $qb->addOrderBy($field, $order->getOrder());
         }
-
-        return $this;
     }
 
     /**
      * @param QueryBuilder $qb
      * @param Filter $filter
-     * @return $this
      */
-    public function addPaginator(QueryBuilder $qb, Filter $filter)
+    public static function addPaginator(QueryBuilder $qb, Filter $filter)
     {
         $page       = $filter->getPage();
         $pageSize   = $filter->getPageSize();
@@ -86,30 +78,27 @@ class FilterRepository extends EntityRepository
             $qb->setMaxResults($pageSize);
             $qb->setFirstResult(($page - 1) * $pageSize);
         }
-
-        return $this;
     }
 
     /**
      * @param QueryBuilder $qb
      * @param Filter $filter
      * @param SearchEngineInterface|null $searchEngine
-     * @return $this
+     * @param string|null $entityName
      */
-    public function addSearch(
+    public static function addSearch(
         QueryBuilder $qb,
         Filter $filter,
-        SearchEngineInterface $searchEngine = null
+        SearchEngineInterface $searchEngine = null,
+        string $entityName = null
     ) {
-        if($filter->getQuery() && $searchEngine) {
-            $ids = $searchEngine->findByTerm($filter->getQuery(), $this->_entityName);
+        if($filter->getQuery() && $searchEngine && $entityName) {
+            $ids = $searchEngine->findByTerm($filter->getQuery(), $entityName);
 
             $expr = new Comparison($qb->getRootAliases()[0].'.id', 'IN', "(:valueQuery)");
             $qb->andWhere(new Andx([$expr]));
             $qb->setParameter("valueQuery", $ids);
         }
-
-        return $this;
     }
 
     /**
@@ -117,13 +106,10 @@ class FilterRepository extends EntityRepository
      * @param $field
      * @param $operator
      * @param $value
-     * @return $this
      */
-    public function addExtraFilter(QueryBuilder $qb, $field, $operator, $value)
+    public static function addExtraFilter(QueryBuilder $qb, $field, $operator, $value)
     {
         $expr = new Comparison($qb->getRootAliases()[0].'.'.$field, $operator, $value);
         $qb->andWhere(new Andx([$expr]));
-
-        return $this;
     }
 }
