@@ -1,4 +1,4 @@
-Repregid\ApiBundle\Repository\ResultProvider:
+Repregid\ApiBundle\Service\DataFilter\ResultProvider:
     exclusion_policy: ALL
     properties:
         pageSize:
