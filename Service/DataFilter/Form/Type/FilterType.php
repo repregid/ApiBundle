@@ -67,7 +67,8 @@ class FilterType extends AbstractType
         $resolver->setDefaults([
             'data_class'            => Filter::class,
             'allow_extra_fields'    => true,
-            'filterType'            => DefaultFilterType::class
+            'filterType'            => DefaultFilterType::class,
+            'csrf_protection'       => false
         ]);
     }
 
