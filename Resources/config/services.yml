@@ -6,6 +6,7 @@ services:
 
     Repregid\ApiBundle\Service\:
         resource: '../../Service/*'
+        exclude: '../../Service/DataFilter/ResultProvider.php'
 
     Repregid\ApiBundle\DependencyInjection\Configurator: ~
     Repregid\ApiBundle\Routing\ApiLoader:
