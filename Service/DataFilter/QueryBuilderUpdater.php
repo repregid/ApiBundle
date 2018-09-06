@@ -77,6 +77,8 @@ class QueryBuilderUpdater
         if($pageSize > 0) {
             $qb->setMaxResults($pageSize);
             $qb->setFirstResult(($page - 1) * $pageSize);
+        } else {
+            $qb->setMaxResults(200);
         }
     }
 
