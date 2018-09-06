@@ -86,16 +86,16 @@ class QueryBuilderUpdater
      * @param QueryBuilder $qb
      * @param Filter $filter
      * @param SearchEngineInterface|null $searchEngine
-     * @param string|null $entityName
+     * @param string|null $target
      */
     public static function addSearch(
         QueryBuilder $qb,
         Filter $filter,
         SearchEngineInterface $searchEngine = null,
-        string $entityName = null
+        string $target = null
     ) {
-        if($filter->getQuery() && $searchEngine && $entityName) {
-            $ids = $searchEngine->findByTerm($filter->getQuery(), $entityName);
+        if($filter->getQuery() && $searchEngine && $target) {
+            $ids = $searchEngine->findByTerm($filter->getQuery(), $target);
 
             $expr = new Comparison($qb->getRootAliases()[0].'.id', 'IN', "(:valueQuery)");
             $qb->andWhere(new Andx([$expr]));

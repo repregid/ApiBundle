@@ -42,6 +42,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('defaultActions')->defaultValue('@RepregidApiBundle/Resources/config/actions.yml')->end()
                 ->scalarNode('controller')->defaultValue('Repregid\ApiBundle\Controller\CRUDController')->end()
                 ->scalarNode('searchEngine')->defaultValue(null)->end()
+                ->scalarNode('indexPrefix')->defaultValue('')->end()
             ->end()
         ;
 

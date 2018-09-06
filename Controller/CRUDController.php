@@ -34,6 +34,11 @@ class CRUDController extends APIController
     protected $searchEngine;
 
     /**
+     * @var string
+     */
+    protected $indexPrefix;
+
+    /**
      * @var EventDispatcherInterface
      */
     protected $dispatcher;
@@ -57,6 +62,17 @@ class CRUDController extends APIController
     public function setSearchEngine(SearchEngineInterface $searchEngine)
     {
         $this->searchEngine = $searchEngine;
+
+        return $this;
+    }
+
+    /**
+     * @param string $prefix
+     * @return $this
+     */
+    public function setIndexPrefix(string $prefix)
+    {
+        $this->indexPrefix = $prefix;
 
         return $this;
     }
@@ -142,7 +158,7 @@ class CRUDController extends APIController
         QueryBuilderUpdater::addFilter($filterBuilder, $form->get('filter'), $updater);
         QueryBuilderUpdater::addSorts($filterBuilder, $filter);
         QueryBuilderUpdater::addPaginator($filterBuilder, $filter);
-        QueryBuilderUpdater::addSearch($filterBuilder, $filter, $this->searchEngine);
+        QueryBuilderUpdater::addSearch($filterBuilder, $filter, $this->searchEngine, $this->indexPrefix.$entity);
 
         if($id && $field) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);

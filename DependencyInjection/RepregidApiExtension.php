@@ -43,6 +43,7 @@ class RepregidApiExtension extends Extension
                 throw new \Exception("'".$config['searchEngine']."' search engine could not be found!");
             }
             $controller->addMethodCall('setSearchEngine', [new Reference($config['searchEngine'])]);
+            $controller->addMethodCall('setIndexPrefix', [$config['indexPrefix']]);
         }
     }
 
