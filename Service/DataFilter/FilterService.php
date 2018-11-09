@@ -3,6 +3,7 @@
 namespace Repregid\ApiBundle\Service\DataFilter;
 
 
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\Query\Expr\Comparison;
 use Doctrine\ORM\QueryBuilder;
@@ -19,12 +20,13 @@ use Symfony\Component\Form\FormInterface;
 class FilterService
 {
     const OPERATOR_LIKE         = '=?';
+    const OPERATOR_IN           = 'IN';
     const OPERATOR_IS_NULL      = 'IS NULL';
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
 
-    const OPERATORS_COMPLEX      = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
+    const OPERATORS_COMPLEX      = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN];
     const OPERATORS_ONE_SIDE     = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES    = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '='];
+    const OPERATORS_TWO_SIDES    = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN];
 
     /**
      * @var array
@@ -238,21 +240,27 @@ class FilterService
 
             $paramName = sprintf('p_%s', str_replace('.', '_', $field));
 
-            $value  = $values['value'];
+            $pavamValue  = $values['value'];
             $expr   = $field.' '.$comparison;
             $param  = [];
 
             if(in_array($comparison, self::OPERATORS_TWO_SIDES)) {
+                $rvalue = ':'.$paramName;
 
                 if($comparison === self::OPERATOR_LIKE) {
                     $comparison = 'LIKE';
-                    $value = mb_strtolower($value, 'UTF-8');
-                    $value = "%$value%";
+                    $pavamValue = mb_strtolower($pavamValue, 'UTF-8');
+                    $pavamValue = "%$pavamValue%";
                     $field = "LOWER($field)";
                 }
 
-                $expr   = new Comparison($field, $comparison, ':'.$paramName);
-                $param  = [$paramName => $value];
+                if ($comparison === self::OPERATOR_IN) {
+                    $pavamValue = [explode(',', $pavamValue), Connection::PARAM_STR_ARRAY];
+                    $rvalue = '('.$rvalue.')';
+                }
+
+                $expr   = new Comparison($field, $comparison, $rvalue);
+                $param  = [$paramName => $pavamValue];
             }
 
             return $filterQuery->createCondition($expr, $param);
