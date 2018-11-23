@@ -101,7 +101,7 @@ class FilterType extends AbstractType
         $filterService->prepareFormField($form->get('filter'));
 
         $filter['sort']     = $filterService->getSorts();
-        $filter['filter']   = $filterService->getValues();
+        $filter['filter']   = $filterService->getNestedValues();
 
         $event->setData($filter);
     }

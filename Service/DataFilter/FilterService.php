@@ -8,9 +8,15 @@ use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\Query\Expr\Comparison;
 use Doctrine\ORM\QueryBuilder;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderExecuterInterface;
+use Lexik\Bundle\FormFilterBundle\Filter\FilterOperands;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CheckboxFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CollectionAdapterFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateTimeFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateTimeRangeFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\NumberFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\NumberRangeFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Query\QueryInterface;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\CollectionFilterType;
 use Symfony\Component\Form\FormInterface;
 
 /**
@@ -23,10 +29,14 @@ class FilterService
     const OPERATOR_IN           = 'IN';
     const OPERATOR_IS_NULL      = 'IS NULL';
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
+    const OPERATOR_BETWEEN      = 'BETWEEN';
 
-    const OPERATORS_COMPLEX      = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN];
-    const OPERATORS_ONE_SIDE     = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES    = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN];
+    const OPERATORS_MULTIPLE    = [self::OPERATOR_IN, self::OPERATOR_BETWEEN];
+    const OPERATORS_COMPLEX     = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN];
+    const OPERATORS_ONE_SIDE    = [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
+    const OPERATORS_TWO_SIDES   = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN];
+
+    const DELIMITER             = ',';
 
     /**
      * @var array
@@ -49,6 +59,27 @@ class FilterService
     public function getValues(): array
     {
         return $this->values;
+    }
+
+    /**
+     * @return array
+     */
+    public function getNestedValues(): array
+    {
+        $result = [];
+
+        foreach($this->values as $field => $value) {
+            $fields = explode('.', $field);
+            $fields = array_reverse($fields);
+
+            foreach ($fields as $field) {
+                $value = [$field => $value];
+            }
+
+            $result = array_merge_recursive($result, $value);
+        }
+
+        return $result;
     }
 
     /**
@@ -103,16 +134,7 @@ class FilterService
         }
 
         foreach($cache as $condition) {
-            $fields = explode('.', $condition[0]);
-            $fields = array_reverse($fields);
-
-            $value = $condition[2];
-            foreach ($fields as $field) {
-                $value = [$field => $value];
-            }
-
-            $this->values = array_merge_recursive($this->values, $value);
-
+            $this->values[$condition[0]]    = $condition[2];
             $this->operators[$condition[0]] = $condition[1];
         }
     }
@@ -143,8 +165,8 @@ class FilterService
 
         foreach ($available as $operator) {
 
-            $isOneSide  = in_array($operator, static::OPERATORS_ONE_SIDE);
-            $isComplex  = in_array($operator, static::OPERATORS_COMPLEX);
+            $isOneSide  = in_array($operator, self::OPERATORS_ONE_SIDE);
+            $isComplex  = in_array($operator, self::OPERATORS_COMPLEX);
             $pattern    = preg_quote($operator);
             $pattern    = $isComplex ? "/\\s$pattern\\b/" : "/$pattern/";
 
@@ -177,6 +199,9 @@ class FilterService
 
             $field = $name.(!$name ? '' : '.').$childName;
 
+            /**
+             * Рекурсия на потомков
+             */
             if ($config->hasOption('shared_keys')) {
 
                 $sharedKeys = $config->getOption('shared_keys');
@@ -200,10 +225,13 @@ class FilterService
                     $form->remove($childName);
                     continue;
                 }
+            /**
+             * Самый младший ребенок
+             */
             } else {
 
                 if(
-                    !array_key_exists($field, $this->operators) &&
+                    !array_key_exists($field, $this->values) &&
                     !array_key_exists($field, $this->sorts)
                 ) {
                     $form->remove($childName);
@@ -214,12 +242,93 @@ class FilterService
                     $this->sorts[$field]->setAlias($alias);
                 }
 
-                if (array_key_exists($field, $this->operators)) {
+                if (
+                    array_key_exists($field, $this->operators) &&
+                    array_key_exists($field, $this->values)
+                ) {
                     $isOneSide  = in_array($this->operators[$field], self::OPERATORS_ONE_SIDE);
+                    $isMultiple = in_array($this->operators[$field], self::OPERATORS_MULTIPLE);
 
-                    $type       = $isOneSide ? CheckboxFilterType::class : get_class($childType);
-                    $options    = $isOneSide ? [] : $config->getOptions();
-                    $options    = array_replace($options, ['apply_filter' => self::getApplyFilter($this->operators[$field])]);
+                    /**
+                     * 1.   По умолчанию в форме оставляем все как есть.
+                     */
+                    $type           = get_class($childType);
+                    $options        = $config->getOptions();
+                    $applyFilter    = true;
+
+                    /**
+                     * 2.   При одностороннем операторе выставляем тип Checkbox, а значение у него будет true
+                     *      Таким образом у нас получится валидная форма для такого типа операторов.
+                     */
+                    if($isOneSide) {
+                        $type       = CheckboxFilterType::class;
+                        $options    = [];
+                    } elseif($isMultiple) {
+                        $mValue = explode(self::DELIMITER, $this->values[$field]);
+                        $applyFilter = false;
+                        switch ($this->operators[$field]) {
+                            /**
+                             * 2.1  Если IN, то преобразовываем поле в коллекцию таких полей.
+                             */
+                            case self::OPERATOR_IN: {
+                                $type = CollectionFilterType::class;
+                                $options = [
+                                    'entry_type'    => get_class($childType),
+                                    'entry_options' => $config->getOptions(),
+                                    'allow_add'     => true
+                                ];
+                                $this->values[$field] = $mValue;
+                                $applyFilter = true;
+                                break;
+                            }
+                            /**
+                             * 2.2  Если between, то преобразовываем поле в соответствующий тип Range.
+                             *      В данном случае нам необходимо чтобы значение состояло минимум из двух элементов.
+                             */
+                            case self::OPERATOR_BETWEEN: {
+                                if(count($mValue) < 2) {
+                                    break;
+                                }
+                                switch (get_class($childType)) {
+                                    case DateTimeFilterType::class: {
+                                        $type = DateTimeRangeFilterType::class;
+                                        $options = [
+                                            'left_datetime_options'     => $config->getOptions(),
+                                            'right_datetime_options'    => $config->getOptions()
+                                        ];
+                                        $this->values[$field] = [
+                                            'left_datetime'             => $mValue[0],
+                                            'right_datetime'            => $mValue[1]
+                                        ];
+                                        break;
+                                    }
+                                    case NumberFilterType::class: {
+                                        $type = NumberRangeFilterType::class;
+                                        $options = [
+                                            'left_number_options'       => array_merge(
+                                                $config->getOptions(),
+                                                ['condition_operator' => FilterOperands::OPERATOR_GREATER_THAN_EQUAL]
+                                            ),
+                                            'right_number_options'      => array_merge(
+                                                $config->getOptions(),
+                                                ['condition_operator' => FilterOperands::OPERATOR_LOWER_THAN_EQUAL]
+                                            )
+                                        ];
+                                        $this->values[$field] = [
+                                            'left_number'               => $mValue[0],
+                                            'right_number'              => $mValue[1]
+                                        ];
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    if($applyFilter) {
+                        $options = array_replace($options, ['apply_filter' => self::getApplyFilter($this->operators[$field])]);
+                    }
 
                     $form->add($childName, $type, $options);
                 }
@@ -255,7 +364,7 @@ class FilterService
                 }
 
                 if ($comparison === self::OPERATOR_IN) {
-                    $pavamValue = [explode(',', $pavamValue), Connection::PARAM_STR_ARRAY];
+                    $pavamValue = [$pavamValue, Connection::PARAM_STR_ARRAY];
                     $rvalue = '('.$rvalue.')';
                 }
 
