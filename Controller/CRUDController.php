@@ -135,8 +135,9 @@ class CRUDController extends APIController
     {
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
-
-        $this->denyAccessUnlessGranted($security);
+        if (!empty($security)) {
+            $this->denyAccessUnlessGranted($security);
+        }
 
         $filter = new Filter();
         $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
@@ -195,7 +196,9 @@ class CRUDController extends APIController
         $repo = $this->getRepo($entity);
         $item = $repo->find($id);
 
-        $this->denyAccessUnlessGranted($security, $item);
+        if (!empty($security)) {
+            $this->denyAccessUnlessGranted($security, $item);
+        }
 
         return $item ? $this->renderOk($item, $groups) : $this->renderNotFound();
     }
@@ -220,7 +223,9 @@ class CRUDController extends APIController
         string $formMethod
     ) : View
     {
-        $this->denyAccessUnlessGranted($security);
+        if (!empty($security)) {
+            $this->denyAccessUnlessGranted($security);
+        }
 
         $item = new $entity();
         $form = $this->form($formType, $formMethod);
@@ -269,8 +274,9 @@ class CRUDController extends APIController
         if(!$item) {
             return $this->renderNotFound();
         }
-
-        $this->denyAccessUnlessGranted($security, $item);
+        if (!empty($security)) {
+            $this->denyAccessUnlessGranted($security, $item);
+        }
 
         $form->setData($item);
         $form->handleRequest($request);
@@ -311,7 +317,9 @@ class CRUDController extends APIController
             return $this->renderNotFound();
         }
 
-        $this->denyAccessUnlessGranted($security, $item);
+        if (!empty($security)) {
+            $this->denyAccessUnlessGranted($security, $item);
+        }
 
         $entityManager = $this->getDoctrine()->getManager();
         $entityManager->remove($item);
