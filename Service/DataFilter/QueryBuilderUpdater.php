@@ -22,7 +22,7 @@ class QueryBuilderUpdater
      * @param Filter $filter
      * @return ResultProvider
      */
-    public static function createResultsProvider(QueryBuilder $qb, Filter $filter): ResultProvider
+    public static function createResultsProvider(QueryBuilder $qb, CommonFilter $filter): ResultProvider
     {
         $pagerQB    = clone $qb;
         $pager      = new Paginator($pagerQB->getQuery());
@@ -69,7 +69,7 @@ class QueryBuilderUpdater
      * @param QueryBuilder $qb
      * @param Filter $filter
      */
-    public static function addPaginator(QueryBuilder $qb, Filter $filter)
+    public static function addPaginator(QueryBuilder $qb, CommonFilter $filter)
     {
         $page       = $filter->getPage();
         $pageSize   = $filter->getPageSize();
@@ -90,7 +90,7 @@ class QueryBuilderUpdater
      */
     public static function addSearch(
         QueryBuilder $qb,
-        Filter $filter,
+        CommonFilter $filter,
         SearchEngineInterface $searchEngine = null,
         string $target = null
     ) {

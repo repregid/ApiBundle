@@ -7,6 +7,7 @@ use Repregid\ApiBundle\Service\DataFilter\FilterOrder;
 use Repregid\ApiBundle\Service\DataFilter\FilterService;
 use Repregid\ApiBundle\Service\DataFilter\Form\DataTransformer\SortTransformer;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -41,14 +42,8 @@ class FilterType extends AbstractType
             ->add('sort', TextType::class, [
                 'empty_data' => '-id'
             ])
-            ->add('page',IntegerType::class, [
-                'empty_data' => (string)Filter::PAGE_DEFAULT
-            ])
-            ->add('pageSize',IntegerType::class, [
-                'empty_data' => (string)Filter::PAGE_SIZE_DEFAULT
-            ])
-            ->add('query',TextType::class, [
-                'empty_data' => (string)Filter::QUERY_DEFAULT
+            ->add('index',IntegerType::class, [
+                'empty_data' => (string)0
             ])
         ;
 
@@ -87,18 +82,19 @@ class FilterType extends AbstractType
     {
         $filter = $event->getData();
         $form   = $event->getForm();
-        $extra  = $form->get('extraFilter');
 
         !array_key_exists('filter', $filter)        && $filter['filter'] = '';
         !array_key_exists('sort', $filter)          && $filter['sort'] = '-id';
+        !array_key_exists('sort', $filter)          && $filter['extraFilter'] = '';
+        $index = $filter['index'] ?? 0;
 
         $filterService = new FilterService(
             $filter['filter'],
             $filter['sort'],
-            $extra->getData() ?: ''
+            $filter['extraFilter']
         );
 
-        $filterService->prepareFormField($form->get('filter'));
+        $filterService->prepareFormField($form->get('filter'), $index);
 
         $filter['sort']     = $filterService->getSorts();
         $filter['filter']   = $filterService->getNestedValues();

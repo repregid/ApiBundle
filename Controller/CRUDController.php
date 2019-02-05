@@ -7,9 +7,13 @@ use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\View\View;
 use Repregid\ApiBundle\Event\Events;
 use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
+use Repregid\ApiBundle\Service\DataFilter\CommonFilter;
 use Repregid\ApiBundle\Service\DataFilter\Filter;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\CommonFilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\PaginationType;
+use Repregid\ApiBundle\Service\DataFilter\Form\Type\ResultProviderType;
 use Repregid\ApiBundle\Service\DataFilter\QueryBuilderUpdater;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
@@ -139,31 +143,68 @@ class CRUDController extends APIController
             $this->denyAccessUnlessGranted($security);
         }
 
-        $filter = new Filter();
-        $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
-
         $filterEvent =  new ExtraFilterFormEvent($entity);
         $this->dispatcher->dispatch(Events::getExtraFilterEventName($context), $filterEvent);
 
-        $form->get('extraFilter')->setData(strval($filterEvent->getExtraFilter()) ?: '');
+        $extraFilter = strval($filterEvent->getExtraFilter());
 
+        $updater = $this->get('lexik_form_filter.query_builder_updater');
+
+        $formData = $request->query->all();
+
+        $filterQueries = $formData['filter'] ?? [''];
+        if (!is_array($filterQueries)) {
+            $filterQueries = [$filterQueries];
+        }
+        //Обрабатываем каждую строку фильтра отдельно
+        //Так на каждую будет сгенерировано отдельная пачка JOIN'ов, что утежеляет запрос
+        //Но мы получим возможность дополнительно фильтровать в shared_object'ах
+        foreach ($filterQueries as $index => $filterQuery) {
+            $filter = new Filter();
+            $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
+            //index в форме используется для создания разных join'ов и их алиасов на каждую форму
+            $filterForm = [
+                'filter' => $filterQuery,
+                'index' => $index,
+                'extraFilter' => $extraFilter
+            ];
+            if (isset($formData['sort'])) {
+                $filterForm['sort'] = $formData['sort'];
+            }
+
+            $form->submit($filterForm, false);
+            if ($form->isSubmitted() && !$form->isValid()) {
+                return $this->renderFormError($form);
+            }
+            //Забываем предыдущие join'ы, т.к. иначе FilterBuilderUpdater переиспользует существущие алиасы
+            $updater->setParts([]);
+
+            QueryBuilderUpdater::addFilter($filterBuilder, $form->get('filter'), $updater);
+            QueryBuilderUpdater::addSorts($filterBuilder, $filter);
+
+            //extraFilter применяем только один раз к первой форме фильтрации, возможно стоит добавить его к filterQueries,
+            //но тогда будет еще одна пачка join'ов
+            $extraFilter = '';
+        }
+
+        //Добавляем пагинацию и поиск через сфинкс
+        $commonFilter = new CommonFilter();
+
+        $form = $this->form(CommonFilterType::class, $filterMethod, [], $commonFilter);
         $form->submit($request->query->all(), false);
+
         if($form->isSubmitted() && !$form->isValid()) {
             return $this->renderFormError($form);
         }
 
-        $updater = $this->get('lexik_form_filter.query_builder_updater');
-
-        QueryBuilderUpdater::addFilter($filterBuilder, $form->get('filter'), $updater);
-        QueryBuilderUpdater::addSorts($filterBuilder, $filter);
-        QueryBuilderUpdater::addPaginator($filterBuilder, $filter);
-        QueryBuilderUpdater::addSearch($filterBuilder, $filter, $this->searchEngine, $this->indexPrefix.$entity);
+        QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
+        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $this->indexPrefix.$entity);
 
         if($id && $field) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }
 
-        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $filter);
+        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter);
 
         /* // Testing. Just add '/' at the start of this line.
             print($filterBuilder->getQuery()->getSQL());

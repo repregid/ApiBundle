@@ -184,9 +184,10 @@ class FilterService
     /**
      * @param FormInterface $form
      * @param string $name
+     * @param int $index
      * @param string $alias
      */
-    public function prepareFormField(FormInterface $form, string $name = '', string $alias = '')
+    public function prepareFormField(FormInterface $form, int $index, string $name = '', string $alias = '')
     {
         /**
          * @var $child FormInterface
@@ -208,7 +209,7 @@ class FilterService
 
                 $options = array_replace(
                     $config->getOptions(),
-                    ['add_shared' => self::getSharedFilter($sharedKeys[0], $sharedKeys[1])]
+                    ['add_shared' => self::getSharedFilter($sharedKeys[0], $sharedKeys[1]. "_$index")]
                 );
 
                 $form->add($childName, get_class($childType), $options);
@@ -217,8 +218,9 @@ class FilterService
 
                 $this->prepareFormField(
                     $childType instanceof CollectionAdapterFilterType ? $child->get(0) : $child,
+                    $index,
                     $field,
-                    $alias.$sharedKeys[1]
+                    $alias.$sharedKeys[1]. "_$index"
                 );
 
                 if($child->count() === 0) {
