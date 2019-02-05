@@ -43,8 +43,21 @@ class CommonFilterType extends AbstractType
             ->add('query',TextType::class, [
                 'empty_data' => (string)CommonFilter::QUERY_DEFAULT
             ])
+            ->add('sort', TextType::class, [
+                'empty_data' => '-id'
+            ])
+            ->add('extraFilter', TextType::class, [
+                'mapped' => false
+            ])
+            ->add('filter')
         ;
 
+        /**
+         * LISTENERS
+         */
+        $builder->addEventListener(
+            FormEvents::PRE_SUBMIT, [$this, 'filterListener']
+        );
     }
     /**
      * @param OptionsResolver $resolver
@@ -54,6 +67,7 @@ class CommonFilterType extends AbstractType
         $resolver->setDefaults([
             'data_class'            => CommonFilter::class,
             'allow_extra_fields'    => true,
+            'filterType'            => DefaultFilterType::class,
             'csrf_protection'       => false
         ]);
     }
@@ -64,6 +78,24 @@ class CommonFilterType extends AbstractType
     public function getBlockPrefix()
     {
         return null;
+    }
+
+    /**
+     * @param FormEvent $event
+     */
+    public function filterListener(FormEvent $event)
+    {
+        $filter = $event->getData();
+        $form   = $event->getForm();
+        $extra  = $form->get('extraFilter');
+
+        !array_key_exists('filter', $filter)        && $filter['filter'] = '';
+        !array_key_exists('sort', $filter)        && $filter['sort'] = '-id';
+
+        $filter['filter'] = FilterService::parseFilters($filter['filter'], $extra->getData() ?: '');
+        $filter['sort'] = FilterService::parseSorts($filter['sort']);
+
+        $event->setData($filter);
     }
 
 }

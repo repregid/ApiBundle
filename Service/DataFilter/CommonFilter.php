@@ -3,14 +3,20 @@
 namespace Repregid\ApiBundle\Service\DataFilter;
 
 /**
- * Class Filter
+ * Class CommonFilter
  * @package Repregid\ApiBundle\Service\DataFilter
  */
 class CommonFilter
 {
+    const FILTER_DEFAULT    = [];
     const PAGE_DEFAULT      = 1;
     const PAGE_SIZE_DEFAULT = 30;
     const QUERY_DEFAULT     = '';
+
+    /**
+     * @var array
+     */
+    protected $filter = self::FILTER_DEFAULT;
 
     /**
      * @var FilterOrder[]
@@ -32,6 +38,59 @@ class CommonFilter
      */
     protected $query = self::QUERY_DEFAULT;
 
+    /**
+     * Filter constructor.
+     */
+    public function __construct()
+    {
+        $this->sort = self::getDefaultSort();
+    }
+
+    /**
+     * @return array
+     */
+    public static function getDefaultSort()
+    {
+        return ['id' => new FilterOrder('id',  FilterOrder::ORDER_DESC)];
+    }
+
+    /**
+     * @return array
+     */
+    public function getFilter(): array
+    {
+        return $this->filter;
+    }
+
+    /**
+     * @param array $filter
+     * @return $this
+     */
+    public function setFilter($filter)
+    {
+        $this->filter = $filter;
+
+        return $this;
+    }
+
+    /**
+     * @return FilterOrder[]
+     */
+    public function getSort(): array
+    {
+        return $this->sort;
+    }
+
+    /**
+     * @param array $sort
+     * @return $this
+     */
+    public function setSort($sort)
+    {
+        $this->sort = $sort;
+
+        return $this;
+    }
 
     /**
      * @return int

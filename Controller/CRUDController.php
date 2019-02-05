@@ -150,27 +150,27 @@ class CRUDController extends APIController
 
         $updater = $this->get('lexik_form_filter.query_builder_updater');
 
-        $formData = $request->query->all();
+        $commonFilter = new CommonFilter();
 
-        $filterQueries = $formData['filter'] ?? [''];
-        if (!is_array($filterQueries)) {
-            $filterQueries = [$filterQueries];
+        $form = $this->form(CommonFilterType::class, $filterMethod, [], $commonFilter);
+        $form->get('extraFilter')->setData(strval($filterEvent->getExtraFilter()) ?: '');
+        $form->submit($request->query->all(), false);
+
+        if($form->isSubmitted() && !$form->isValid()) {
+            return $this->renderFormError($form);
         }
-        //Обрабатываем каждую строку фильтра отдельно
-        //Так на каждую будет сгенерировано отдельная пачка JOIN'ов, что утежеляет запрос
-        //Но мы получим возможность дополнительно фильтровать в shared_object'ах
-        foreach ($filterQueries as $index => $filterQuery) {
+
+        //Из общей формы формы забираем предподготовленные формы для фильтрации
+        //каждая форма порождает свою пачку join'ов, чтобы они не пересекались добавляем к алиасам индекс
+        foreach ($commonFilter->getFilter() as $index => $filterQuery) {
             $filter = new Filter();
             $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
             //index в форме используется для создания разных join'ов и их алиасов на каждую форму
             $filterForm = [
                 'filter' => $filterQuery,
                 'index' => $index,
-                'extraFilter' => $extraFilter
+                'sort' => $commonFilter->getSort()
             ];
-            if (isset($formData['sort'])) {
-                $filterForm['sort'] = $formData['sort'];
-            }
 
             $form->submit($filterForm, false);
             if ($form->isSubmitted() && !$form->isValid()) {
@@ -181,20 +181,6 @@ class CRUDController extends APIController
 
             QueryBuilderUpdater::addFilter($filterBuilder, $form->get('filter'), $updater);
             QueryBuilderUpdater::addSorts($filterBuilder, $filter);
-
-            //extraFilter применяем только один раз к первой форме фильтрации, возможно стоит добавить его к filterQueries,
-            //но тогда будет еще одна пачка join'ов
-            $extraFilter = '';
-        }
-
-        //Добавляем пагинацию и поиск через сфинкс
-        $commonFilter = new CommonFilter();
-
-        $form = $this->form(CommonFilterType::class, $filterMethod, [], $commonFilter);
-        $form->submit($request->query->all(), false);
-
-        if($form->isSubmitted() && !$form->isValid()) {
-            return $this->renderFormError($form);
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);

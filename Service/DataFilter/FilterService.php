@@ -101,21 +101,20 @@ class FilterService
     /**
      * FilterService constructor.
      *
-     * @param string $filter
-     * @param string $sort
-     * @param string $extraFilter
+     * @param array $filter
+     * @param array $sort
      */
-    public function __construct(string $filter, string $sort, string $extraFilter = '')
+    public function __construct(array $filter, array $sort)
     {
-        $this->parseFilter($filter, $extraFilter);
-        $this->parseSorts($sort);
+        foreach($filter as $field => $condition) {
+            $this->values[$field]    = $condition[1];
+            $this->operators[$field] = $condition[0];
+        }
+
+        $this->sorts = $sort;
     }
 
-    /**
-     * @param $filter
-     * @param $extraFilter
-     */
-    protected function parseFilter($filter, $extraFilter)
+    public static function parseFilters(string $filter, string $extraFilter): array
     {
         $cache = [];
 
@@ -127,23 +126,32 @@ class FilterService
 
         foreach ($filterArray as $condition) {
             $selectedOperator = null;
-            $parsedCondition = $this->parseExpr($condition);
+            $parsedCondition = self::parseExpr($condition);
             if ($parsedCondition !== null) {
                 $cache[] = $parsedCondition;
             }
         }
-
+        $conditionsByField = [];
         foreach($cache as $condition) {
-            $this->values[$condition[0]]    = $condition[2];
-            $this->operators[$condition[0]] = $condition[1];
+            $conditionsByField[$condition[0]][] = [$condition[1], $condition[2]];
         }
+
+        $conditions = [];
+        foreach ($conditionsByField as $field => $cond) {
+            foreach ($cond as $index => $value) {
+                $conditions[$index][$field] = $value;
+            }
+        }
+
+        return $conditions;
     }
 
     /**
      * @param $string
      */
-    protected function parseSorts($string)
+    public static function parseSorts($string): array
     {
+        $sorts = [];
         $sort = explode(',', $string);
 
         foreach($sort as $item) {
@@ -151,15 +159,16 @@ class FilterService
             $path       = $item[0] === '-' ? substr($item, 1) : $item;
             $field      = explode('.', $path);
 
-            $this->sorts[$path]   = new FilterOrder(end($field), $criteria);
+            $sorts[$path]   = new FilterOrder(end($field), $criteria);
         }
+        return $sorts;
     }
 
     /**
      * @param $expr
      * @return array|null
      */
-    protected function parseExpr($expr): ?array
+    protected static function parseExpr($expr): ?array
     {
         $available = array_merge(self::OPERATORS_TWO_SIDES, self::OPERATORS_ONE_SIDE);
 
