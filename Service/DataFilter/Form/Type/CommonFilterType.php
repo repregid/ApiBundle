@@ -95,6 +95,11 @@ class CommonFilterType extends AbstractType
         $filter['filter'] = FilterService::parseFilters($filter['filter'], $extra->getData() ?: '');
         $filter['sort'] = FilterService::parseSorts($filter['sort']);
 
+        //Если не спарсилось ниодной формы фильтрации - добавляем одну, но пустую
+        if (empty($filter['filter'])) {
+            $filter['filter'] = [[]];
+        }
+
         $event->setData($filter);
     }
 
