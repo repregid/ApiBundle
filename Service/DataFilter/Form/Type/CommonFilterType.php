@@ -43,13 +43,13 @@ class CommonFilterType extends AbstractType
             ->add('query',TextType::class, [
                 'empty_data' => (string)CommonFilter::QUERY_DEFAULT
             ])
-            ->add('sort', TextType::class, [
-                'empty_data' => '-id'
+            ->add('sort', UnstructuredType::class, [
             ])
             ->add('extraFilter', TextType::class, [
                 'mapped' => false
             ])
-            ->add('filter')
+            ->add('filter', UnstructuredType::class, [
+            ])
         ;
 
         /**

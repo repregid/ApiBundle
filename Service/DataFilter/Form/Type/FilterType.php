@@ -36,8 +36,7 @@ class FilterType extends AbstractType
                 'allow_extra_fields'    => true,
                 'mapped'                => false
             ])
-            ->add('sort', TextType::class, [
-                'empty_data' => '-id'
+            ->add('sort', UnstructuredType::class, [
             ])
             ->add('index',IntegerType::class, [
                 'empty_data' => (string)0
