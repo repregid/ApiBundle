@@ -123,6 +123,7 @@ class CRUDController extends APIController
      * @param string $filterMethod
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
      * @param null $field - название поля фильтрации (для вложенных роутов)
+     * @param string|null $softDeleteableFieldName
      * @return View
      */
     public function listAction(
@@ -134,7 +135,8 @@ class CRUDController extends APIController
         string $filterType = DefaultFilterType::class,
         string $filterMethod = 'GET',
         $id = null,
-        $field = null
+        $field = null,
+        $softDeleteableFieldName = null
     ) : View
     {
         $repo           = $this->getRepo($entity);
@@ -188,6 +190,10 @@ class CRUDController extends APIController
 
         if($id && $field) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
+        }
+
+        if ($softDeleteableFieldName !== null) {
+            QueryBuilderUpdater::addExtraFilter($filterBuilder, $softDeleteableFieldName, 'IS', 'NULL');
         }
 
         $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter);

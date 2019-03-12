@@ -32,6 +32,7 @@ class RepregidApiExtension extends Extension
         $configurator->addArgument($config['actionPaths']);
         $configurator->addArgument($config['contexts']);
         $configurator->addArgument($config['defaultActions']);
+        $configurator->addArgument($config['listWithSoftDeleteable']);
 
         $container->setParameter('repregid_api.controller.crud.class', $config['controller']);
 

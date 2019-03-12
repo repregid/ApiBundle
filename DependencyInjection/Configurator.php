@@ -29,23 +29,31 @@ class Configurator
     protected $defaultActions;
 
     /**
+     * @var boolean
+     */
+    protected $listWithSoftDeleteable;
+
+    /**
      * Configurator constructor.
      *
      * @param $entityPaths
      * @param $actionPaths
      * @param $contexts
      * @param $defaultActions
+     * @param $listWithSoftDeleteable
      */
     public function __construct(
         $entityPaths,
         $actionPaths,
         $contexts,
-        $defaultActions
+        $defaultActions,
+        $listWithSoftDeleteable
     ) {
-        $this->entityPaths      = $entityPaths;
-        $this->actionPaths      = $actionPaths;
-        $this->contexts         = $contexts;
-        $this->defaultActions   = $defaultActions;
+        $this->entityPaths              = $entityPaths;
+        $this->actionPaths              = $actionPaths;
+        $this->contexts                 = $contexts;
+        $this->defaultActions           = $defaultActions;
+        $this->listWithSoftDeleteable   = $listWithSoftDeleteable;
     }
 
     /**
@@ -123,4 +131,24 @@ class Configurator
 
         return $this;
     }
+
+    /**
+     * @return bool
+     */
+    public function isListWithSoftDeleteable(): bool
+    {
+        return $this->listWithSoftDeleteable;
+    }
+
+    /**
+     * @param bool $listWithSoftDeleteable
+     * @return Configurator
+     */
+    public function setListWithSoftDeleteable(bool $listWithSoftDeleteable)
+    {
+        $this->listWithSoftDeleteable = $listWithSoftDeleteable;
+
+        return $this;
+    }
+
 }

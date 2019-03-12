@@ -164,6 +164,19 @@ final class ApiLoader extends Loader
                         $action->setRequirement('id', $context->getIdRequirement());
                     }
 
+                    if($action->getDefault('_controller')==='repregid_api.controller.crud:listAction'){
+
+                        $listBehavior = $annotation->getListWithSoftDeleteable()!==null?
+                            $annotation->getListWithSoftDeleteable():
+                            $this->configurator->isListWithSoftDeleteable();
+
+                        if (!$listBehavior) {
+                            $action->addDefaults([
+                                'softDeleteableFieldName'=> $annotation->getSoftDeleteableFieldName()
+                            ]);
+                        }
+                    }
+
                     $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
                 }
                 $contextRoutes->addPrefix($url);
@@ -307,9 +320,14 @@ final class ApiLoader extends Loader
             /**
              * @var $annotation APIEntity
              */
-            $annotation = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
+            $annotation     = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
+            $softDeletable  = $reader->getClassAnnotation($reflectionClass, 'Gedmo\\Mapping\\Annotation\\SoftDeleteable');
 
             if ($annotation) {
+
+                if ($softDeletable) {
+                    $annotation->setSoftDeleteableFieldName($softDeletable->fieldName);
+                }
 
                 $result[$className] = $annotation;
 

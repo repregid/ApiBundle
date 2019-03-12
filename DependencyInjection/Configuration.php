@@ -43,6 +43,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('controller')->defaultValue('Repregid\ApiBundle\Controller\CRUDController')->end()
                 ->scalarNode('searchEngine')->defaultValue(null)->end()
                 ->scalarNode('indexPrefix')->defaultValue('')->end()
+                ->booleanNode('listWithSoftDeleteable')->defaultValue(false)
             ->end()
         ;
 
