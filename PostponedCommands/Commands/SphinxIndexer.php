@@ -44,7 +44,7 @@ class SphinxIndexer implements PostponedCommandInterface
 
     public function run()
     {
-        $command = "indexer --rotate " . $this->index;
+        $command = "sudo indexer --rotate " . $this->index;
         exec($command);
     }
 }
