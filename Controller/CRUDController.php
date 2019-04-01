@@ -15,11 +15,11 @@ use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\PaginationType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\ResultProviderType;
 use Repregid\ApiBundle\Service\DataFilter\QueryBuilderUpdater;
+use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 
 /**
  * Class CRUDController
@@ -36,11 +36,6 @@ class CRUDController extends APIController
      * @var SearchEngineInterface
      */
     protected $searchEngine;
-
-    /**
-     * @var string
-     */
-    protected $indexPrefix;
 
     /**
      * @var EventDispatcherInterface
@@ -66,17 +61,6 @@ class CRUDController extends APIController
     public function setSearchEngine(SearchEngineInterface $searchEngine)
     {
         $this->searchEngine = $searchEngine;
-
-        return $this;
-    }
-
-    /**
-     * @param string $prefix
-     * @return $this
-     */
-    public function setIndexPrefix(string $prefix)
-    {
-        $this->indexPrefix = $prefix;
 
         return $this;
     }
@@ -197,7 +181,7 @@ class CRUDController extends APIController
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $this->indexPrefix.$entity);
+        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
 
         if($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
