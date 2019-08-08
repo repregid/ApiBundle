@@ -15,11 +15,11 @@ use Repregid\ApiBundle\Service\DataFilter\Form\Type\FilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\PaginationType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\ResultProviderType;
 use Repregid\ApiBundle\Service\DataFilter\QueryBuilderUpdater;
+use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Repregid\ApiBundle\Service\Search\SearchEngineInterface;
 
 /**
  * Class CRUDController
@@ -36,11 +36,6 @@ class CRUDController extends APIController
      * @var SearchEngineInterface
      */
     protected $searchEngine;
-
-    /**
-     * @var string
-     */
-    protected $indexPrefix;
 
     /**
      * @var EventDispatcherInterface
@@ -66,17 +61,6 @@ class CRUDController extends APIController
     public function setSearchEngine(SearchEngineInterface $searchEngine)
     {
         $this->searchEngine = $searchEngine;
-
-        return $this;
-    }
-
-    /**
-     * @param string $prefix
-     * @return $this
-     */
-    public function setIndexPrefix(string $prefix)
-    {
-        $this->indexPrefix = $prefix;
 
         return $this;
     }
@@ -162,6 +146,11 @@ class CRUDController extends APIController
             return $this->renderFormError($form);
         }
 
+        $extraFields = [
+            $softDeleteableFieldName =>false,
+            $field => false
+        ];
+
         //Из общей формы формы забираем предподготовленные формы для фильтрации
         //каждая форма порождает свою пачку join'ов, чтобы они не пересекались добавляем к алиасам индекс
         foreach ($commonFilter->getFilter() as $index => $filterQuery) {
@@ -173,6 +162,12 @@ class CRUDController extends APIController
                 'index' => $index,
                 'sort' => $commonFilter->getSort()
             ];
+
+            foreach ($extraFields as $extraField=>$meet) {
+                if(array_key_exists($extraField, $filterQuery)){
+                    $extraFields[$extraField] = true;
+                }
+            }
 
             $form->submit($filterForm, false);
             if ($form->isSubmitted() && !$form->isValid()) {
@@ -186,13 +181,13 @@ class CRUDController extends APIController
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $this->indexPrefix.$entity);
+        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
 
-        if($id && $field) {
+        if($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }
 
-        if ($softDeleteableFieldName !== null) {
+        if ($softDeleteableFieldName !== null && !$extraFields[$softDeleteableFieldName]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $softDeleteableFieldName, 'IS', 'NULL');
         }
 

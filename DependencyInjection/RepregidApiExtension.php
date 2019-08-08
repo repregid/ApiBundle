@@ -3,6 +3,8 @@
 namespace Repregid\ApiBundle\DependencyInjection;
 
 
+use Repregid\ApiBundle\PostponedCommands\CommandHandler;
+use Repregid\ApiBundle\PostponedCommands\PostponedCommandListener;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\Config\FileLocator;
@@ -40,12 +42,19 @@ class RepregidApiExtension extends Extension
 
         if($config['searchEngine']) {
             $container->register($config['searchEngine']);
+
             if (false === $container->hasDefinition($config['searchEngine'])) {
                 throw new \Exception("'".$config['searchEngine']."' search engine could not be found!");
             }
+
             $controller->addMethodCall('setSearchEngine', [new Reference($config['searchEngine'])]);
-            $controller->addMethodCall('setIndexPrefix', [$config['indexPrefix']]);
+        }
+
+        if ($config['postponedCommands']) {
+            $container
+                ->register(PostponedCommandListener::class)
+                ->setAutowired(true)
+                ->addTag('kernel.event_subscriber');
         }
     }
-
 }

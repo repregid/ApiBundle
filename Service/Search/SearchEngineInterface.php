@@ -14,5 +14,11 @@ interface SearchEngineInterface
      * @param array $fields
      * @return array Array of Ids
      */
-    public function findByTerm(string $term, string $target, array $fields = []) : array ;
+    public function findByTerm(string $term, string $target, array $fields = []): array;
+
+    /**
+     * @param string $entityName
+     * @return string
+     */
+    public function buildIndex($entityName);
 }

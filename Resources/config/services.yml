@@ -8,6 +8,10 @@ services:
         resource: '../../Service/*'
         exclude: '../../Service/DataFilter/ResultProvider.php'
 
+    Repregid\ApiBundle\PostponedCommands\:
+        resource: '../../PostponedCommands/*'
+        exclude: '../../PostponedCommands/PostponedCommandListener.php'
+
     Repregid\ApiBundle\DependencyInjection\Configurator: ~
     Repregid\ApiBundle\Routing\ApiLoader:
         tags: ['routing.loader']
