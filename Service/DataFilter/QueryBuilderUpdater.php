@@ -28,7 +28,7 @@ class QueryBuilderUpdater
         $pager      = new Paginator($pagerQB->getQuery());
 
         return new ResultProvider(
-            $qb->getQuery()->getResult(),
+            $pager->getIterator()->getArrayCopy(),
             $pager->count(),
             $filter->getPageSize()
         );
