@@ -5,6 +5,7 @@ namespace Repregid\ApiBundle\Service\DataFilter;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\Query\Expr\Comparison;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
@@ -95,8 +96,20 @@ class QueryBuilderUpdater
         string $target = null
     ) {
         if($filter->getQuery() && $searchEngine && $target) {
-            $ids = $searchEngine->findByTerm($filter->getQuery(), $target);
+            $searchResult = $searchEngine->findByTerm($filter->getQuery(), $target);
 
+            $values = [];
+            $ids = [];
+            foreach ($searchResult as ['idx' => $ind, 'weight' => $weight]) {
+                if (!empty($weight)) {
+                    $values[] = 'WHEN ' . $qb->getRootAliases()[0] . ".id = $ind THEN $weight";
+                }
+                $ids[] = $ind;
+            }
+            if (!empty($values)) {
+                $qb->addSelect('(CASE ' . implode(' ', $values) . ' ELSE 0 END) AS HIDDEN weight ');
+                $qb->addOrderBy('weight', 'DESC');
+            }
             $expr = new Comparison($qb->getRootAliases()[0].'.id', 'IN', "(:valueQuery)");
             $qb->andWhere(new Andx([$expr]));
             $qb->setParameter("valueQuery", $ids);

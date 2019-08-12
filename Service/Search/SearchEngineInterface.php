@@ -12,7 +12,7 @@ interface SearchEngineInterface
      * @param string $term
      * @param string $target
      * @param array $fields
-     * @return array Array of Ids
+     * @return array Array ['idx' => itemId, 'weight' => weight]
      */
     public function findByTerm(string $term, string $target, array $fields = []): array;
 

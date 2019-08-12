@@ -151,6 +151,9 @@ class CRUDController extends APIController
             $field => false
         ];
 
+        //Подня выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
+        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
+
         //Из общей формы формы забираем предподготовленные формы для фильтрации
         //каждая форма порождает свою пачку join'ов, чтобы они не пересекались добавляем к алиасам индекс
         foreach ($commonFilter->getFilter() as $index => $filterQuery) {
@@ -181,7 +184,6 @@ class CRUDController extends APIController
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
 
         if($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
