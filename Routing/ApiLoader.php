@@ -320,11 +320,11 @@ final class ApiLoader extends Loader
             /**
              * @var $annotation APIEntity
              */
-            $annotation     = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
-            $softDeletable  = $reader->getClassAnnotation($reflectionClass, 'Gedmo\\Mapping\\Annotation\\SoftDeleteable');
+            $annotation = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
 
             if ($annotation) {
 
+                $softDeletable  = $this->getSoftDeleteable($reflectionClass, $reader);
                 if ($softDeletable) {
                     $annotation->setSoftDeleteableFieldName($softDeletable->fieldName);
                 }
@@ -438,5 +438,29 @@ final class ApiLoader extends Loader
         }
 
         return $configuratorContexts[$key];
+    }
+
+    /**
+     * Поиск SoftDeleteable в родителях
+     * @param $reflectionClass
+     * @param $reader
+     * @return mixed
+     * @throws \ReflectionException
+     */
+    private function getSoftDeleteable($reflectionClass, $reader){
+        $softDeleteable = $reader->getClassAnnotation($reflectionClass, 'Gedmo\\Mapping\\Annotation\\SoftDeleteable');
+
+        if($softDeleteable){
+            return $softDeleteable;
+        }
+
+        $parentClass = get_parent_class($reflectionClass->getName());
+
+        if($parentClass){
+            $parentReflectionClass = new \ReflectionClass($parentClass);
+            $softDeleteable = $this->getSoftDeleteable($parentReflectionClass, $reader);
+        }
+
+        return $softDeleteable;
     }
 }
