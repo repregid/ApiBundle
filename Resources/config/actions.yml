@@ -12,6 +12,7 @@ view:
     defaults:
         _controller: repregid_api.controller.crud:viewAction
         groupSuffix: detail
+        idName: 'id'
     methods: [GET]
     requirements:
         id: '\d+'
@@ -32,6 +33,7 @@ update:
         formType: '*'
         formMethod: PATCH
         groupSuffix: detail
+        idName: 'id'
     methods: [PATCH]
     requirements:
         id: '\d+'
@@ -40,6 +42,7 @@ delete:
     path:  '/{id}'
     defaults:
         _controller: repregid_api.controller.crud:deleteAction
+        idName: 'id'
     methods: [DELETE]
     requirements:
         id: '\d+'

@@ -212,6 +212,7 @@ class CRUDController extends APIController
      * @param array $groups
      * @param array $security
      * @param $id
+     * @param string $idName
      * @return View
      */
     public function viewAction(
@@ -220,11 +221,12 @@ class CRUDController extends APIController
         string $entity,
         array $groups,
         array $security,
-        $id
+        $id,
+        string $idName = 'id'
     ) : View
     {
         $repo = $this->getRepo($entity);
-        $item = $repo->find($id);
+        $item = $repo->findOneBy([$idName => $id]);
 
         if (!empty($security)) {
             $this->denyAccessUnlessGranted($security, $item);
@@ -284,6 +286,7 @@ class CRUDController extends APIController
      * @param string $formType
      * @param string $formMethod
      * @param $id
+     * @param string $idName
      * @return View
      */
     public function updateAction(
@@ -294,11 +297,12 @@ class CRUDController extends APIController
         array $security,
         string $formType,
         string $formMethod,
-        $id
+        $id,
+        string $idName = 'id'
     ) : View
     {
         $repo = $this->getRepo($entity);
-        $item = $repo->find($id);
+        $item = $repo->findOneBy([$idName => $id]);
         $form = $this->form($formType, $formMethod);
 
         if(!$item) {
@@ -330,6 +334,7 @@ class CRUDController extends APIController
      * @param string $entity
      * @param array $security
      * @param $id
+     * @param string $idName
      * @return View
      */
     public function deleteAction(
@@ -337,11 +342,12 @@ class CRUDController extends APIController
         string $context,
         string $entity,
         array $security,
-        $id
+        $id,
+        string $idName = 'id'
     ) : View
     {
         $repo = $this->getRepo($entity);
-        $item = $repo->find($id);
+        $item = $repo->findOneBy([$idName => $id]);
 
         if(!$item) {
             return $this->renderNotFound();

@@ -10,6 +10,7 @@ namespace Repregid\ApiBundle\Annotation;
 class APIContext
 {
     const DEFAULT_ID_REQUIREMENT = '\d+';
+    const DEFAULT_ID_NAME        = 'id';
 
     /**
      * @var string
@@ -87,6 +88,11 @@ class APIContext
     protected $idRequirement = self::DEFAULT_ID_REQUIREMENT;
 
     /**
+     * @var string
+     */
+    protected $idName = self::DEFAULT_ID_NAME;
+
+    /**
      * APIEntity constructor.
      * @param $values
      */
@@ -98,6 +104,7 @@ class APIContext
         $this->serializationGroups  = $values['serializationGroups']    ?? [];
         $this->bindings             = $values['bindings']               ?? [];
         $this->idRequirement        = $values['idRequirement']          ?? self::DEFAULT_ID_REQUIREMENT;
+        $this->idName               = $values['idName']                 ?? self::DEFAULT_ID_NAME;
         $this->security             = $values['security']               ?? [];
     }
 
@@ -147,6 +154,14 @@ class APIContext
     public function getIdRequirement(): string
     {
         return $this->idRequirement;
+    }
+
+    /**
+     * @return string
+     */
+    public function getIdName(): string
+    {
+        return $this->idName;
     }
 
     /**

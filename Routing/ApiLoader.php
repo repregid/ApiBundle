@@ -90,12 +90,12 @@ final class ApiLoader extends Loader
             $shortName  = self::getShortName($className);
             $contexts   = $annotation->getContexts();
 
-            foreach($contexts as $key => $context) {
+            foreach ($contexts as $key => $context) {
 
                 /**
                  * Let's using simple
                  */
-                if(is_string($context)) {
+                if (is_string($context)) {
                     $key = $context;
                     $context = new APIContext([]);
                 }
@@ -106,7 +106,7 @@ final class ApiLoader extends Loader
                 /**
                  * Check all bindings
                  */
-                foreach($bindings as $binding) {
+                foreach ($bindings as $binding) {
                     $this->getContextConfig($binding);
                 }
 
@@ -130,7 +130,7 @@ final class ApiLoader extends Loader
                 $actionNames = array_unique($actions);
                 $actions = [];
 
-                foreach($actionNames as $actionName) {
+                foreach ($actionNames as $actionName) {
                     $actions[$actionName] = [
                         'type'      => $contextTypes[$actionName] ?? $contextTypes['all'] ?? '' ,
                         'groups'    => $contextGroups[$actionName] ?? $contextGroups['all'] ?? [],
@@ -138,7 +138,7 @@ final class ApiLoader extends Loader
                     ];
                 }
 
-                foreach($actions as $actionName => $actionParams) {
+                foreach ($actions as $actionName => $actionParams) {
 
                     $filterType = $annotation->getFilterType();
                     $formType   = $actionParams['type'] ?: $annotation->getFormType();
@@ -147,7 +147,7 @@ final class ApiLoader extends Loader
                     $groupSuffix    = $action->getDefault('groupSuffix');
                     $defaultGroups  = $groupSuffix ? [$key.'_'.$groupSuffix] : [];
 
-                    foreach($bindings as $binding) {
+                    foreach ($bindings as $binding) {
                         $defaultGroups[] = $binding.'_'.$groupSuffix;
                     }
 
@@ -160,27 +160,29 @@ final class ApiLoader extends Loader
                         'security'  => $actionParams['security']
                     ]);
 
-                    if($action->hasRequirement('id')) {
+                    if ($action->hasRequirement('id')) {
                         $action->setRequirement('id', $context->getIdRequirement());
                     }
 
-                    if($action->getDefault('_controller')==='repregid_api.controller.crud:listAction'){
+                    if ($action->hasDefault('idName')) {
+                        $action->setDefault('idName', $context->getIdName());
+                    }
 
-                        $listBehavior = $annotation->getListWithSoftDeleteable()!==null?
-                            $annotation->getListWithSoftDeleteable():
-                            $this->configurator->isListWithSoftDeleteable();
+                    if ($action->getDefault('_controller') === 'repregid_api.controller.crud:listAction') {
+
+                        $listBehavior = $annotation->getListWithSoftDeleteable() !== null
+                            ? $annotation->getListWithSoftDeleteable()
+                            : $this->configurator->isListWithSoftDeleteable();
 
                         if (!$listBehavior) {
-                            $action->addDefaults([
-                                'softDeleteableFieldName'=> $annotation->getSoftDeleteableFieldName()
-                            ]);
+                            $action->setDefault('softDeleteableFieldName', $annotation->getSoftDeleteableFieldName());
                         }
                     }
 
                     $contextRoutes->add($this->getRouteName($key, $shortName, $actionName), $action);
                 }
                 $contextRoutes->addPrefix($url);
-                foreach($contextRoutes as $contextRoute) {
+                foreach ($contextRoutes as $contextRoute) {
                     $contextRoute->setPath(rtrim($contextRoute->getPath(), '/'));
                 }
                 $resultRoutes->addCollection($contextRoutes);
