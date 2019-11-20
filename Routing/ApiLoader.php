@@ -126,6 +126,9 @@ final class ApiLoader extends Loader
                 $contextTypes       = $context->getTypes();
                 $contextGroups      = $context->getSerializationGroups();
                 $contextSecurity    = $context->getSecurity();
+                if (empty($context->getSecurity())) {
+                    $contextSecurity = $contextConfig['security'];
+                }
 
                 $actionNames = array_unique($actions);
                 $actions = [];
