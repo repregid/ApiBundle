@@ -255,10 +255,6 @@ class CRUDController extends APIController
         string $formMethod
     ) : View
     {
-        if (!empty($security)) {
-            $this->denyAccessUnlessGranted($security);
-        }
-
         $item = new $entity();
         $form = $this->form($formType, $formMethod);
 
@@ -266,6 +262,9 @@ class CRUDController extends APIController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $item = $form->getData();
+            if (!empty($security)) {
+                $this->denyAccessUnlessGranted($security, $item);
+            }
 
             $entityManager = $this->getDoctrine()->getManager();
             $entityManager->persist($item);
