@@ -5,6 +5,10 @@ namespace Repregid\ApiBundle\Controller;
 
 use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\View\View;
+use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
+use Repregid\ApiBundle\DQLFunction\OperatorFunction;
+use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
+use Repregid\ApiBundle\DQLFunction\ToJsonbFunction;
 use Repregid\ApiBundle\Event\Events;
 use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
 use Repregid\ApiBundle\Service\DataFilter\CommonFilter;
@@ -150,6 +154,12 @@ class CRUDController extends APIController
             $softDeleteableFieldName =>false,
             $field => false
         ];
+
+        //инициализация кастомных функций
+        $em = $filterBuilder->getEntityManager();
+        $em->getConfiguration()->addCustomNumericFunction(  OperatorFunction::name,        OperatorFunction::class      );
+        $em->getConfiguration()->addCustomStringFunction(   JsonbExistAnyFunction::name,   JsonbExistAnyFunction::class );
+        $em->getConfiguration()->addCustomStringFunction(   ToJsonbFunction::name,         ToJsonbFunction::class       );
 
         //Подня выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
         QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
