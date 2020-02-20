@@ -124,6 +124,7 @@ class CRUDController extends APIController
         string $filterMethod = 'GET',
         $id = null,
         $field = null,
+        $extraField = null,
         $softDeleteableFieldName = null
     ) : View
     {
@@ -136,14 +137,21 @@ class CRUDController extends APIController
         $filterEvent =  new ExtraFilterFormEvent($entity);
         $this->dispatcher->dispatch(Events::getExtraFilterEventName($context), $filterEvent);
 
-        $extraFilter = strval($filterEvent->getExtraFilter());
+        $extraFilter = strval($filterEvent->getExtraFilter()) ?? '';
+
+
+        if($id && $extraField) {
+            $sublistFilter = "$extraField=$id";
+            $extraFilter = empty($extraFilter) ? $sublistFilter : $extraFilter.'&'.$sublistFilter;
+        }
+
 
         $updater = $this->get('lexik_form_filter.query_builder_updater');
 
         $commonFilter = new CommonFilter();
 
         $form = $this->form(CommonFilterType::class, $filterMethod, [], $commonFilter);
-        $form->get('extraFilter')->setData(strval($filterEvent->getExtraFilter()) ?: '');
+        $form->get('extraFilter')->setData($extraFilter);
         $form->submit($request->query->all(), false);
 
         if($form->isSubmitted() && !$form->isValid()) {
@@ -194,7 +202,6 @@ class CRUDController extends APIController
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-
         if($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }

@@ -222,10 +222,18 @@ final class ApiLoader extends Loader
                 $uri    = self::getShortName($subList->getListClass());
                 $list
                     ->setPath($view->getPath().'/'.lcfirst(Inflector::pluralize($uri)))
-                    ->setRequirement('id', '\d+')
                     ->setDefault('field', $subList->getField())
+                    ->setDefault('extraField', $subList->getExtraField())
                     ->setDefault('subViewClass', $subList->getViewClass())
                 ;
+
+                if ($subList->getIdRequirement('id')) {
+                    $list->setRequirement('id', $subList->getIdRequirement());
+                }
+
+                if ($subList->getIdName('idName')) {
+                    $list->setDefault('idName', $subList->getIdName());
+                }
 
                 $resultRoutes->add($name, $list);
             }

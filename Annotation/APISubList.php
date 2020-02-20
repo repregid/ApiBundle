@@ -12,10 +12,18 @@ class APISubList
     const SIDE_VIEW = 'view';
     const SIDE_LIST = 'list';
 
+    const DEFAULT_ID_REQUIREMENT = '\d+';
+    const DEFAULT_ID_NAME        = 'id';
+
     /**
      * @var string
      */
     protected $field;
+
+    /**
+     * @var string
+     */
+    protected $extraField;
 
     /**
      * @var string
@@ -43,13 +51,24 @@ class APISubList
     protected $viewClass;
 
     /**
+     * @var string
+     */
+    protected $idRequirement = self::DEFAULT_ID_REQUIREMENT;
+
+    /**
+     * @var string
+     */
+    protected $idName = self::DEFAULT_ID_NAME;
+
+
+    /**
      * APIParent constructor.
      * @param $values
      */
     public function __construct($values)
     {
-        if (!isset($values['field']) || empty($values['field'])) {
-            throw new \InvalidArgumentException('You must define a "field" attribute for each APISubList annotation.');
+        if (empty($values['field']) && empty($values['extraField'])) {
+            throw new \InvalidArgumentException('You must define a "field" or "extraField" attribute for each APISubList annotation.');
         }
 
         if (!isset($values['listContext']) || empty($values['listContext'])) {
@@ -60,16 +79,19 @@ class APISubList
             throw new \InvalidArgumentException('You must define a "viewContext" attribute for each APISubList annotation.');
         }
 
-        $this->field    = $values['field'];
-        $this->side     = $values['side'] ?? self::SIDE_VIEW;
-        $this->listContext = $values['listContext'];
-        $this->viewContext = $values['viewContext'];
+        $this->field            = $values['field'] ?? null;
+        $this->extraField       = $values['extraField'] ?? null;
+        $this->side             = $values['side']               ?? self::SIDE_VIEW;
+        $this->listContext      = $values['listContext'];
+        $this->viewContext      = $values['viewContext'];
+        $this->idRequirement    = $values['idRequirement']      ?? self::DEFAULT_ID_REQUIREMENT;
+        $this->idName           = $values['idName']             ?? self::DEFAULT_ID_NAME;
     }
 
     /**
      * @return string
      */
-    public function getField(): string
+    public function getField(): ?string
     {
         return $this->field;
     }
@@ -82,6 +104,24 @@ class APISubList
     {
         $this->field = $field;
 
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getExtraField(): ?string
+    {
+        return $this->extraField;
+    }
+
+    /**
+     * @param string $extraField
+     * @return $this
+     */
+    public function setExtraField(?string $extraField): self
+    {
+        $this->extraField = $extraField;
         return $this;
     }
 
@@ -178,5 +218,21 @@ class APISubList
         $this->side = $side;
 
         return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getIdRequirement(): string
+    {
+        return $this->idRequirement;
+    }
+
+    /**
+     * @return string
+     */
+    public function getIdName(): string
+    {
+        return $this->idName;
     }
 }
