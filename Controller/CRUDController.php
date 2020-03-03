@@ -11,6 +11,7 @@ use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
 use Repregid\ApiBundle\DQLFunction\ToJsonbFunction;
 use Repregid\ApiBundle\Event\Events;
 use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
+use Repregid\ApiBundle\Event\ListPostResultEvent;
 use Repregid\ApiBundle\Service\DataFilter\CommonFilter;
 use Repregid\ApiBundle\Service\DataFilter\Filter;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\CommonFilterType;
@@ -212,6 +213,9 @@ class CRUDController extends APIController
 
         $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter);
 
+        $postResultEvent =  new ListPostResultEvent($entity, $result);
+        $this->dispatcher->dispatch(Events::EVENT_LIST_POST_RESULT, $postResultEvent);
+
         /* // Testing. Just add '/' at the start of this line.
             print($filterBuilder->getQuery()->getSQL());
             print_r($filterBuilder->getQuery()->getParameters()->toArray());
@@ -219,7 +223,7 @@ class CRUDController extends APIController
          /*/
          //*/
 
-        return $this->renderResultProvider($result, $groups);
+        return $this->renderResultProvider($postResultEvent->getResult(), $groups);
     }
 
     /**
