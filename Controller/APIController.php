@@ -3,7 +3,7 @@
 namespace Repregid\ApiBundle\Controller;
 
 
-use FOS\RestBundle\Controller\FOSRestController;
+use FOS\RestBundle\Controller\AbstractFOSRestController;
 use FOS\RestBundle\View\View;
 use Repregid\ApiBundle\Service\DataFilter\ResultProvider;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Class APIController
  * @package Repregid\ApiBundle\Controller
  */
-class APIController extends FOSRestController
+class APIController extends AbstractFOSRestController
 {
     const MESSAGE_NOT_FOUND         = 'Not found';
     const MESSAGE_BAD_REQUEST       = 'Bad request';
