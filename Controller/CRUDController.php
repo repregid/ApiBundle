@@ -142,7 +142,8 @@ class CRUDController extends APIController
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
         if (!empty($security)) {
-            $this->denyAccessUnlessGranted($security);
+            
+            $this->denyAccessUnlessGrantedAny($security);
         }
 
         $filterEvent =  new ExtraFilterFormEvent($entity);
@@ -260,7 +261,7 @@ class CRUDController extends APIController
         $item = $repo->findOneBy([$idName => $id]);
 
         if (!empty($security)) {
-            $this->denyAccessUnlessGranted($security, $item);
+            $this->denyAccessUnlessGrantedAny($security, $item);
         }
 
         return $item ? $this->renderOk($item, $groups) : $this->renderNotFound();
@@ -294,7 +295,7 @@ class CRUDController extends APIController
         if ($form->isSubmitted() && $form->isValid()) {
             $item = $form->getData();
             if (!empty($security)) {
-                $this->denyAccessUnlessGranted($security, $item);
+                $this->denyAccessUnlessGrantedAny($security, $item);
             }
 
             $entityManager = $this->getDoctrine()->getManager();
@@ -339,7 +340,7 @@ class CRUDController extends APIController
             return $this->renderNotFound();
         }
         if (!empty($security)) {
-            $this->denyAccessUnlessGranted($security, $item);
+            $this->denyAccessUnlessGrantedAny($security, $item);
         }
 
         $form->setData($item);
@@ -384,7 +385,7 @@ class CRUDController extends APIController
         }
 
         if (!empty($security)) {
-            $this->denyAccessUnlessGranted($security, $item);
+            $this->denyAccessUnlessGrantedAny($security, $item);
         }
 
         $entityManager = $this->getDoctrine()->getManager();
@@ -392,5 +393,20 @@ class CRUDController extends APIController
         $entityManager->flush();
 
         return $this->renderResponse(['message' => 'item has been deleted']);
+    }
+
+    protected function denyAccessUnlessGrantedAny(array $attributes, $subject = null, string $message = 'Access Denied.'): void
+    {
+        foreach ($attributes as $attribute) {
+            if ($this->isGranted($attribute, $subject)) {
+                return;
+            }
+        }
+
+        $exception = $this->createAccessDeniedException($message);
+        $exception->setAttributes($attributes);
+        $exception->setSubject($subject);
+
+        throw $exception;
     }
 }
