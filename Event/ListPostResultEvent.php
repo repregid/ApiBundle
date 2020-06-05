@@ -3,7 +3,7 @@
 namespace Repregid\ApiBundle\Event;
 
 use Repregid\ApiBundle\Service\DataFilter\ResultProvider;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Class ListPostResultEvent

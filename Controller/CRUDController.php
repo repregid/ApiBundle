@@ -5,6 +5,7 @@ namespace Repregid\ApiBundle\Controller;
 
 use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\View\View;
+use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
 use Repregid\ApiBundle\DQLFunction\OperatorFunction;
 use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
@@ -48,16 +49,25 @@ class CRUDController extends APIController
     protected $dispatcher;
 
     /**
+     * @var FilterBuilderUpdaterInterface
+     */
+    protected $filterBuilderUpdater;
+
+    /**
      * CRUDController constructor.
      *
      * @param FormFactoryInterface $formFactory
      * @param EventDispatcherInterface $dispatcher
      */
-    public function __construct(FormFactoryInterface $formFactory, EventDispatcherInterface $dispatcher)
+    public function __construct(FormFactoryInterface $formFactory,
+                                EventDispatcherInterface $dispatcher,
+                                FilterBuilderUpdaterInterface $filterBuilderUpdater)
     {
         $this->formFactory  = $formFactory;
         $this->dispatcher   = $dispatcher;
+        $this->filterBuilderUpdater = $filterBuilderUpdater;
     }
+
 
     /**
      * @param SearchEngineInterface $searchEngine
@@ -136,7 +146,7 @@ class CRUDController extends APIController
         }
 
         $filterEvent =  new ExtraFilterFormEvent($entity);
-        $this->dispatcher->dispatch(Events::getExtraFilterEventName($context), $filterEvent);
+        $this->dispatcher->dispatch($filterEvent, Events::getExtraFilterEventName($context));
 
         $extraFilter = strval($filterEvent->getExtraFilter()) ?? '';
 
@@ -147,7 +157,7 @@ class CRUDController extends APIController
         }
 
 
-        $updater = $this->get('lexik_form_filter.query_builder_updater');
+        $updater = $this->filterBuilderUpdater;
 
         $commonFilter = new CommonFilter();
 
@@ -214,7 +224,7 @@ class CRUDController extends APIController
         $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter);
 
         $postResultEvent =  new ListPostResultEvent($entity, $result);
-        $this->dispatcher->dispatch(Events::EVENT_LIST_POST_RESULT, $postResultEvent);
+        $this->dispatcher->dispatch($postResultEvent, Events::EVENT_LIST_POST_RESULT);
 
         /* // Testing. Just add '/' at the start of this line.
             print($filterBuilder->getQuery()->getSQL());
