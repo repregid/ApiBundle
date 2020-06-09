@@ -23,10 +23,10 @@ class QueryBuilderUpdater
      * @param Filter $filter
      * @return ResultProvider
      */
-    public static function createResultsProvider(QueryBuilder $qb, CommonFilter $filter): ResultProvider
+    public static function createResultsProvider(QueryBuilder $qb, CommonFilter $filter, bool $fetchJoinCollection): ResultProvider
     {
         $pagerQB    = clone $qb;
-        $pager      = new Paginator($pagerQB->getQuery());
+        $pager      = new Paginator($pagerQB->getQuery(), $fetchJoinCollection);
 
         return new ResultProvider(
             $pager->getIterator()->getArrayCopy(),

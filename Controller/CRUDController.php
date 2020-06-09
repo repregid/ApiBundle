@@ -123,6 +123,7 @@ class CRUDController extends APIController
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
      * @param null $field - название поля фильтрации (для вложенных роутов)
      * @param string|null $softDeleteableFieldName
+     * @param bool $fetchJoinCollection - для пагинации у сложных запросов
      * @return View
      */
     public function listAction(
@@ -136,7 +137,8 @@ class CRUDController extends APIController
         $id = null,
         $field = null,
         $extraField = null,
-        $softDeleteableFieldName = null
+        $softDeleteableFieldName = null,
+        $fetchJoinCollection = false
     ) : View
     {
         $repo           = $this->getRepo($entity);
@@ -222,7 +224,7 @@ class CRUDController extends APIController
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $softDeleteableFieldName, 'IS', 'NULL');
         }
 
-        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter);
+        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter, $fetchJoinCollection);
 
         $postResultEvent =  new ListPostResultEvent($entity, $result);
         $this->dispatcher->dispatch($postResultEvent, Events::EVENT_LIST_POST_RESULT);
