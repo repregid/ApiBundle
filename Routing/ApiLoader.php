@@ -4,6 +4,7 @@ namespace Repregid\ApiBundle\Routing;
 
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Inflector\Inflector;
+use Doctrine\Inflector\InflectorFactory;
 use Doctrine\ORM\Mapping\ManyToMany;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\OneToMany;
@@ -32,6 +33,11 @@ final class ApiLoader extends Loader
     protected $configurator;
 
     /**
+     * @var Inflector
+     */
+    protected $inflector;
+
+    /**
      * @var Route[]
      */
     protected $importedRoutes = [];
@@ -48,6 +54,7 @@ final class ApiLoader extends Loader
     public function __construct(Configurator $configurator)
     {
         $this->configurator = $configurator;
+        $this->inflector = InflectorFactory::create()->build();
     }
 
     /**
@@ -112,7 +119,7 @@ final class ApiLoader extends Loader
 
                 $contextRoutes = new RouteCollection();
 
-                $uri = $context->getUri() ?? lcfirst(Inflector::pluralize($shortName));
+                $uri = $context->getUri() ?? lcfirst($this->inflector->pluralize($shortName));
                 $url =
                     '/'.trim($contextConfig['url'], '/').
                     '/'.trim($uri, '/');
@@ -221,7 +228,7 @@ final class ApiLoader extends Loader
                 $name   = $viewRoute.'_'.$listRoute;
                 $uri    = self::getShortName($subList->getListClass());
                 $list
-                    ->setPath($view->getPath().'/'.lcfirst(Inflector::pluralize($uri)))
+                    ->setPath($view->getPath().'/'.lcfirst($this->inflector->pluralize($uri)))
                     ->setDefault('field', $subList->getField())
                     ->setDefault('extraField', $subList->getExtraField())
                     ->setDefault('subViewClass', $subList->getViewClass())
@@ -262,7 +269,7 @@ final class ApiLoader extends Loader
         return implode('_', [
             self::ROUTE_PREFIX,
             $context,
-            Inflector::tableize(self::getShortName($className)),
+            $this->inflector->tableize(self::getShortName($className)),
             $action
         ]);
     }
