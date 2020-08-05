@@ -3,13 +3,11 @@
 namespace Repregid\ApiBundle\DependencyInjection;
 
 
-use Repregid\ApiBundle\PostponedCommands\CommandHandler;
 use Repregid\ApiBundle\PostponedCommands\PostponedCommandListener;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Loader;
-use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Class RepregidApiExtension
@@ -38,16 +36,12 @@ class RepregidApiExtension extends Extension
 
         $container->setParameter('repregid_api.controller.crud.class', $config['controller']);
 
-        $controller = $container->getDefinition('repregid_api.controller.crud');
-
         if($config['searchEngine']) {
-            $container->register($config['searchEngine']);
+            $container->register('repregid_api.search_engine', $config['searchEngine']);
 
-            if (false === $container->hasDefinition($config['searchEngine'])) {
+            if (false === $container->hasDefinition('repregid_api.search_engine')) {
                 throw new \Exception("'".$config['searchEngine']."' search engine could not be found!");
             }
-
-            $controller->addMethodCall('setSearchEngine', [new Reference($config['searchEngine'])]);
         }
 
         if ($config['postponedCommands']) {

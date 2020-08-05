@@ -31,7 +31,7 @@ use Symfony\Component\HttpFoundation\Request;
  * Class CRUDController
  * @package Repregid\ApiBundle\Controller
  */
-class CRUDController extends APIController
+class CRUDController extends APIController implements CRUDControllerInterface
 {
     /**
      * @var FormFactoryInterface
@@ -55,20 +55,20 @@ class CRUDController extends APIController
 
     /**
      * CRUDController constructor.
-     *
      * @param FormFactoryInterface $formFactory
      * @param EventDispatcherInterface $dispatcher
+     * @param FilterBuilderUpdaterInterface $filterBuilderUpdater
      */
-    public function __construct(FormFactoryInterface $formFactory,
-                                EventDispatcherInterface $dispatcher,
-                                FilterBuilderUpdaterInterface $filterBuilderUpdater)
-    {
-        $this->formFactory  = $formFactory;
-        $this->dispatcher   = $dispatcher;
+    public function __construct(
+        FormFactoryInterface $formFactory,
+        EventDispatcherInterface $dispatcher,
+        FilterBuilderUpdaterInterface $filterBuilderUpdater
+    ) {
+        $this->formFactory = $formFactory;
+        $this->dispatcher = $dispatcher;
         $this->filterBuilderUpdater = $filterBuilderUpdater;
     }
-
-
+    
     /**
      * @param SearchEngineInterface $searchEngine
      * @return $this
@@ -84,7 +84,7 @@ class CRUDController extends APIController
      * @param string $entity
      * @return EntityRepository
      */
-    protected function getRepo(string $entity) : EntityRepository
+    protected function getRepo(string $entity): EntityRepository
     {
         return $this->getDoctrine()->getManager()->getRepository($entity);
     }
@@ -139,12 +139,12 @@ class CRUDController extends APIController
         $extraField = null,
         $softDeleteableFieldName = null,
         $fetchJoinCollection = false
-    ) : View
+    ): View
     {
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
         if (!empty($security)) {
-            
+
             $this->denyAccessUnlessGrantedAny($security);
         }
 
@@ -154,7 +154,7 @@ class CRUDController extends APIController
         $extraFilter = strval($filterEvent->getExtraFilter()) ?? '';
 
 
-        if($id && $extraField) {
+        if ($id && $extraField) {
             $sublistFilter = "$extraField=$id";
             $extraFilter = empty($extraFilter) ? $sublistFilter : $extraFilter.'&'.$sublistFilter;
         }
@@ -168,12 +168,12 @@ class CRUDController extends APIController
         $form->get('extraFilter')->setData($extraFilter);
         $form->submit($request->query->all(), false);
 
-        if($form->isSubmitted() && !$form->isValid()) {
+        if ($form->isSubmitted() && !$form->isValid()) {
             return $this->renderFormError($form);
         }
 
         $extraFields = [
-            $softDeleteableFieldName =>false,
+            $softDeleteableFieldName => false,
             $field => false
         ];
 
@@ -198,8 +198,8 @@ class CRUDController extends APIController
                 'sort' => $commonFilter->getSort()
             ];
 
-            foreach ($extraFields as $extraField=>$meet) {
-                if(array_key_exists($extraField, $filterQuery)){
+            foreach ($extraFields as $extraField => $meet) {
+                if (array_key_exists($extraField, $filterQuery)) {
                     $extraFields[$extraField] = true;
                 }
             }
@@ -216,7 +216,7 @@ class CRUDController extends APIController
         }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-        if($id && $field && !$extraFields[$field]) {
+        if ($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }
 
@@ -226,7 +226,7 @@ class CRUDController extends APIController
 
         $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter, $fetchJoinCollection);
 
-        $postResultEvent =  new ListPostResultEvent($entity, $result);
+        $postResultEvent = new ListPostResultEvent($entity, $result);
         $this->dispatcher->dispatch($postResultEvent, Events::EVENT_LIST_POST_RESULT);
 
         /* // Testing. Just add '/' at the start of this line.
@@ -257,7 +257,7 @@ class CRUDController extends APIController
         array $security,
         $id,
         string $idName = 'id'
-    ) : View
+    ): View
     {
         $repo = $this->getRepo($entity);
         $item = $repo->findOneBy([$idName => $id]);
@@ -287,7 +287,7 @@ class CRUDController extends APIController
         array $security,
         string $formType,
         string $formMethod
-    ) : View
+    ): View
     {
         $item = new $entity();
         $form = $this->form($formType, $formMethod);
@@ -332,13 +332,13 @@ class CRUDController extends APIController
         string $formMethod,
         $id,
         string $idName = 'id'
-    ) : View
+    ): View
     {
         $repo = $this->getRepo($entity);
         $item = $repo->findOneBy([$idName => $id]);
         $form = $this->form($formType, $formMethod);
 
-        if(!$item) {
+        if (!$item) {
             return $this->renderNotFound();
         }
         if (!empty($security)) {
@@ -377,12 +377,12 @@ class CRUDController extends APIController
         array $security,
         $id,
         string $idName = 'id'
-    ) : View
+    ): View
     {
         $repo = $this->getRepo($entity);
         $item = $repo->findOneBy([$idName => $id]);
 
-        if(!$item) {
+        if (!$item) {
             return $this->renderNotFound();
         }
 
