@@ -37,11 +37,7 @@ class RepregidApiExtension extends Extension
         $container->setParameter('repregid_api.controller.crud.class', $config['controller']);
 
         if($config['searchEngine']) {
-            $container->register('repregid_api.search_engine', $config['searchEngine']);
-
-            if (false === $container->hasDefinition('repregid_api.search_engine')) {
-                throw new \Exception("'".$config['searchEngine']."' search engine could not be found!");
-            }
+            $container->setParameter('repregid_api.search_engine.class', $config['searchEngine']);
         }
 
         if ($config['postponedCommands']) {

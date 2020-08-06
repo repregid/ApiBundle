@@ -20,9 +20,9 @@ class CRUDControllerCompilerPass implements CompilerPassInterface
         $taggedServices = $container->findTaggedServiceIds('repregid_api.crud_controller');
 
         foreach ($taggedServices as $serviceId => $tagAttributes) {
-            if ($container->hasDefinition('repregid_api.search_engine')) {
+            if ($container->hasParameter('repregid_api.search_engine.class')) {
                 $container->getDefinition($serviceId)->addMethodCall(
-                    'setSearchEngine', [new Reference('repregid_api.search_engine')]
+                    'setSearchEngine', [new Reference($container->getParameter('repregid_api.search_engine.class'))]
                 );
             }
         }
