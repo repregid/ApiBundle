@@ -60,7 +60,7 @@ final class ApiLoader extends Loader
     /**
      * {@inheritdoc}
      */
-    public function supports($resource, string $type = null)
+    public function supports($resource, $type = null)
     {
         return 'repregid_api' === $type;
     }
@@ -68,7 +68,7 @@ final class ApiLoader extends Loader
     /**
      * {@inheritdoc}
      */
-    public function load($resource, string $type = null): RouteCollection
+    public function load($resource, $type = null): RouteCollection
     {
         $this->includeFiles();
         $this->importRoutes();
