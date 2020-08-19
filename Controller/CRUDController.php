@@ -191,6 +191,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
         foreach ($commonFilter->getFilter() as $index => $filterQuery) {
             $filter = new Filter();
             $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
+
+            $filterQuery = $this->getDecodedTextFilters($filterQuery);
             //index в форме используется для создания разных join'ов и их алиасов на каждую форму
             $filterForm = [
                 'filter' => $filterQuery,
@@ -397,6 +399,11 @@ class CRUDController extends APIController implements CRUDControllerInterface
         return $this->renderResponse(['message' => 'item has been deleted']);
     }
 
+    /**
+     * @param array $attributes
+     * @param null $subject
+     * @param string $message
+     */
     protected function denyAccessUnlessGrantedAny(array $attributes, $subject = null, string $message = 'Access Denied.'): void
     {
         foreach ($attributes as $attribute) {
@@ -410,5 +417,17 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $exception->setSubject($subject);
 
         throw $exception;
+    }
+
+    /**
+     * @param $filterQuery
+     * @return mixed
+     */
+    protected function getDecodedTextFilters($filterQuery)
+    {
+        foreach ($filterQuery as $index => $query){
+            $filterQuery[$index][1] = str_replace("&", "\&", urldecode($query[1]));
+        }
+        return $filterQuery;
     }
 }
