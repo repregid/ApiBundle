@@ -4,6 +4,7 @@ namespace Repregid\ApiBundle\Controller;
 
 
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use FOS\RestBundle\View\View;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
@@ -68,7 +69,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $this->dispatcher = $dispatcher;
         $this->filterBuilderUpdater = $filterBuilderUpdater;
     }
-    
+
     /**
      * @param SearchEngineInterface $searchEngine
      * @return $this
@@ -144,7 +145,6 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
         if (!empty($security)) {
-
             $this->denyAccessUnlessGrantedAny($security);
         }
 
@@ -159,9 +159,6 @@ class CRUDController extends APIController implements CRUDControllerInterface
             $extraFilter = empty($extraFilter) ? $sublistFilter : $extraFilter.'&'.$sublistFilter;
         }
 
-
-        $updater = $this->filterBuilderUpdater;
-
         $commonFilter = new CommonFilter();
 
         $form = $this->form(CommonFilterType::class, $filterMethod, [], $commonFilter);
@@ -173,9 +170,45 @@ class CRUDController extends APIController implements CRUDControllerInterface
         }
 
         $extraFields = [
-            $softDeleteableFieldName => false,
             $field => false
         ];
+
+        $filterBuilder = $this->prepareFilter($commonFilter, $entity, $filterType, $filterMethod, $softDeleteableFieldName, $extraFields);
+
+        QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
+        if ($id && $field && !$extraFields[$field]) {
+            QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
+        }
+
+
+        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter, $fetchJoinCollection);
+
+        $postResultEvent =  new ListPostResultEvent($entity, $result);
+        $this->dispatcher->dispatch($postResultEvent, Events::EVENT_LIST_POST_RESULT);
+
+        /* // Testing. Just add '/' at the start of this line.
+            print($filterBuilder->getQuery()->getSQL());
+            print_r($filterBuilder->getQuery()->getParameters()->toArray());
+            die();
+         /*/
+         //*/
+
+        return $this->renderResultProvider($postResultEvent->getResult(), $groups);
+    }
+
+    protected function prepareFilter(
+        CommonFilter $commonFilter,
+        string $entity,
+        string $filterType = DefaultFilterType::class,
+        string $filterMethod = 'GET',
+        ?string $softDeleteableFieldName = null,
+        array $extraFields = []): QueryBuilder
+    {
+        $repo           = $this->getRepo($entity);
+        $filterBuilder  = $repo->createQueryBuilder('x');
+        $ignoreDeleted    = true;
+        $updater = $this->filterBuilderUpdater;
+
 
         //инициализация кастомных функций
         $em = $filterBuilder->getEntityManager();
@@ -191,7 +224,6 @@ class CRUDController extends APIController implements CRUDControllerInterface
         foreach ($commonFilter->getFilter() as $index => $filterQuery) {
             $filter = new Filter();
             $form = $this->form(FilterType::class, $filterMethod, ['filterType' => $filterType], $filter);
-
             $filterQuery = $this->getDecodedTextFilters($filterQuery);
             //index в форме используется для создания разных join'ов и их алиасов на каждую форму
             $filterForm = [
@@ -205,6 +237,9 @@ class CRUDController extends APIController implements CRUDControllerInterface
                     $extraFields[$extraField] = true;
                 }
             }
+            if ($softDeleteableFieldName !== null && array_key_exists($softDeleteableFieldName, $filterQuery)){
+                $ignoreDeleted = false;
+            }
 
             $form->submit($filterForm, false);
             if ($form->isSubmitted() && !$form->isValid()) {
@@ -217,28 +252,12 @@ class CRUDController extends APIController implements CRUDControllerInterface
             QueryBuilderUpdater::addSorts($filterBuilder, $filter);
         }
 
-        QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
-        if ($id && $field && !$extraFields[$field]) {
-            QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
-        }
-
-        if ($softDeleteableFieldName !== null && !$extraFields[$softDeleteableFieldName]) {
+        if ($softDeleteableFieldName !== null && $ignoreDeleted) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $softDeleteableFieldName, 'IS', 'NULL');
         }
 
-        $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter, $fetchJoinCollection);
 
-        $postResultEvent = new ListPostResultEvent($entity, $result);
-        $this->dispatcher->dispatch($postResultEvent, Events::EVENT_LIST_POST_RESULT);
-
-        /* // Testing. Just add '/' at the start of this line.
-            print($filterBuilder->getQuery()->getSQL());
-            print_r($filterBuilder->getQuery()->getParameters()->toArray());
-            die();
-         /*/
-         //*/
-
-        return $this->renderResultProvider($postResultEvent->getResult(), $groups);
+        return $filterBuilder;
     }
 
     /**
