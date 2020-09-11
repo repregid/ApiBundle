@@ -5,6 +5,7 @@ namespace Repregid\ApiBundle\Controller;
 
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\QueryBuilder;
+use Doctrine\Persistence\ObjectManager;
 use FOS\RestBundle\View\View;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
@@ -124,7 +125,6 @@ class CRUDController extends APIController implements CRUDControllerInterface
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
      * @param null $field - название поля фильтрации (для вложенных роутов)
      * @param string|null $softDeleteableFieldName
-     * @param bool $fetchJoinCollection - для пагинации у сложных запросов
      * @return View
      */
     public function listAction(
@@ -138,8 +138,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $id = null,
         $field = null,
         $extraField = null,
-        $softDeleteableFieldName = null,
-        $fetchJoinCollection = false
+        $softDeleteableFieldName = null
     ): View
     {
         $repo           = $this->getRepo($entity);
@@ -179,8 +178,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         if ($id && $field && !$extraFields[$field]) {
             QueryBuilderUpdater::addExtraFilter($filterBuilder, $field, '=', $id);
         }
-
-
+        $fetchJoinCollection = $this->useFetchJoinColumn($filterBuilder, $this->getDoctrine()->getManager());
         $result = QueryBuilderUpdater::createResultsProvider($filterBuilder, $commonFilter, $fetchJoinCollection);
 
         $postResultEvent =  new ListPostResultEvent($entity, $result);
@@ -195,6 +193,18 @@ class CRUDController extends APIController implements CRUDControllerInterface
 
         return $this->renderResultProvider($postResultEvent->getResult(), $groups);
     }
+
+    private function useFetchJoinColumn(QueryBuilder $queryBuilder, ObjectManager $managerRegistry): bool
+    {
+        if (
+            0 === \count($queryBuilder->getDQLPart('join'))
+        ) {
+            return false;
+        }
+
+        return count(array_diff($queryBuilder->getAllAliases(), $queryBuilder->getRootAliases())) > 0;
+    }
+
 
     protected function prepareFilter(
         CommonFilter $commonFilter,
