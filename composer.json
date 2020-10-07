@@ -8,7 +8,7 @@
         "symfony/validator": "^4.3|^5.0",
         "symfony/yaml": "^4.3|^5.0",
         "symfony/framework-bundle": "^4.3|^5.0",
-        "doctrine/common": "~2.4",
+        "doctrine/common": "~2.4|^3.0",
         "doctrine/inflector": "^1.4",
         "lexik/form-filter-bundle": "^5.0|^6.0"
     },
