@@ -11,6 +11,8 @@ use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderExecuterInterface;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterOperands;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CheckboxFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\CollectionAdapterFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateFilterType;
+use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateRangeFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateTimeFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\DateTimeRangeFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\NumberFilterType;
@@ -333,6 +335,19 @@ class FilterService
                                                 ];
                                                 break;
                                             }
+                                        case DateFilterType::class:
+                                        {
+                                            $type = DateRangeFilterType::class;
+                                            $options = [
+                                                'left_date_options'     => $config->getOptions(),
+                                                'right_date_options'    => $config->getOptions()
+                                            ];
+                                            $this->values[$field] = [
+                                                'left_date'             => $mValue[0],
+                                                'right_date'            => $mValue[1]
+                                            ];
+                                            break;
+                                        }
                                         case NumberFilterType::class:
                                             {
                                                 $type = NumberRangeFilterType::class;
