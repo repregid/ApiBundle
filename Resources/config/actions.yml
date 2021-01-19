@@ -1,7 +1,7 @@
 list:
     path:  ''
     defaults:
-        _controller: repregid_api.controller.crud:listAction
+        _controller: repregid_api.controller.crud::listAction
         filterType: '*'
         filterMethod: GET
         groupSuffix: list
@@ -10,7 +10,7 @@ list:
 view:
     path:  '/{id}'
     defaults:
-        _controller: repregid_api.controller.crud:viewAction
+        _controller: repregid_api.controller.crud::viewAction
         groupSuffix: detail
         idName: 'id'
     methods: [GET]
@@ -20,7 +20,7 @@ view:
 create:
     path:  ''
     defaults:
-        _controller: repregid_api.controller.crud:createAction
+        _controller: repregid_api.controller.crud::createAction
         formType: '*'
         formMethod: POST
         groupSuffix: detail
@@ -29,7 +29,7 @@ create:
 update:
     path:  '/{id}'
     defaults:
-        _controller: repregid_api.controller.crud:updateAction
+        _controller: repregid_api.controller.crud::updateAction
         formType: '*'
         formMethod: PATCH
         groupSuffix: detail
@@ -41,7 +41,7 @@ update:
 delete:
     path:  '/{id}'
     defaults:
-        _controller: repregid_api.controller.crud:deleteAction
+        _controller: repregid_api.controller.crud::deleteAction
         idName: 'id'
     methods: [DELETE]
     requirements:
