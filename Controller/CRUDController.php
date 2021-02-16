@@ -16,6 +16,7 @@ use Repregid\ApiBundle\Event\Events;
 use Repregid\ApiBundle\Event\ExtraFilterFormEvent;
 use Repregid\ApiBundle\Event\ListPostResultEvent;
 use Repregid\ApiBundle\Service\DataFilter\CommonFilter;
+use Repregid\ApiBundle\Service\DataFilter\Form\Exception\FormErrorException;
 use Repregid\ApiBundle\Service\DataFilter\Filter;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\CommonFilterType;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\DefaultFilterType;
@@ -172,7 +173,11 @@ class CRUDController extends APIController implements CRUDControllerInterface
             $field => false
         ];
 
-        $filterBuilder = $this->prepareFilter($commonFilter, $entity, $filterType, $filterMethod, $softDeleteableFieldName, $extraFields);
+        try {
+            $filterBuilder = $this->prepareFilter($commonFilter, $entity, $filterType, $filterMethod, $softDeleteableFieldName, $extraFields);
+        } catch (FormErrorException $e) {
+            return $this->renderFormError($e->getForm());
+        }
 
         QueryBuilderUpdater::addPaginator($filterBuilder, $commonFilter);
         if ($id && $field && !$extraFields[$field]) {
@@ -253,7 +258,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
 
             $form->submit($filterForm, false);
             if ($form->isSubmitted() && !$form->isValid()) {
-                return $this->renderFormError($form);
+                throw new FormErrorException($form);
             }
             //Забываем предыдущие join'ы, т.к. иначе FilterBuilderUpdater переиспользует существущие алиасы
             $updater->setParts([]);

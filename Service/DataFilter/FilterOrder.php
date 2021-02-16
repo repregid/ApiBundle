@@ -63,7 +63,7 @@ class FilterOrder
      */
     public function setOrder(string $order): FilterOrder
     {
-        $this->operator = $order;
+        $this->order = $order;
 
         return $this;
     }
