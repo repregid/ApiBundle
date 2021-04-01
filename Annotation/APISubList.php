@@ -2,11 +2,16 @@
 
 namespace Repregid\ApiBundle\Annotation;
 
+use Attribute;
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
+
 /**
  * Class APISubList
  * @package Repregid\ApiBundle\Annotation
  * @Annotation
+ * @NamedArgumentConstructor
  */
+#[\Attribute(\Attribute::TARGET_PROPERTY| \Attribute::IS_REPEATABLE)]
 class APISubList
 {
     const SIDE_VIEW = 'view';
@@ -65,27 +70,27 @@ class APISubList
      * APIParent constructor.
      * @param $values
      */
-    public function __construct($values)
+    public function __construct(
+        string $listContext,
+        string $viewContext,
+        ?string $field = null,
+        ?string $extraField = null,
+        string $side = self::SIDE_VIEW,
+        $idRequirement = self::DEFAULT_ID_REQUIREMENT,
+        $idName = self::DEFAULT_ID_NAME
+    )
     {
-        if (empty($values['field']) && empty($values['extraField'])) {
+        if (empty($field) && empty($extraField)) {
             throw new \InvalidArgumentException('You must define a "field" or "extraField" attribute for each APISubList annotation.');
         }
 
-        if (!isset($values['listContext']) || empty($values['listContext'])) {
-            throw new \InvalidArgumentException('You must define a "listContext" attribute for each APISubList annotation.');
-        }
-
-        if (!isset($values['viewContext']) || empty($values['viewContext'])) {
-            throw new \InvalidArgumentException('You must define a "viewContext" attribute for each APISubList annotation.');
-        }
-
-        $this->field            = $values['field'] ?? null;
-        $this->extraField       = $values['extraField'] ?? null;
-        $this->side             = $values['side']               ?? self::SIDE_VIEW;
-        $this->listContext      = $values['listContext'];
-        $this->viewContext      = $values['viewContext'];
-        $this->idRequirement    = $values['idRequirement']      ?? self::DEFAULT_ID_REQUIREMENT;
-        $this->idName           = $values['idName']             ?? self::DEFAULT_ID_NAME;
+        $this->listContext      = $listContext;
+        $this->viewContext      = $viewContext;
+        $this->field            = $field;
+        $this->extraField       = $extraField;
+        $this->side             = $side;
+        $this->idRequirement    = $idRequirement;
+        $this->idName           = $idName;
     }
 
     /**

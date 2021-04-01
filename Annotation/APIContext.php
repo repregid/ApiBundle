@@ -2,11 +2,16 @@
 
 namespace Repregid\ApiBundle\Annotation;
 
+use Attribute;
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
+
 /**
  * Class APIContext
  * @package Repregid\ApiBundle\Annotation
  * @Annotation
+ * @NamedArgumentConstructor()
  */
+#[\Attribute(\Attribute::TARGET_CLASS| \Attribute::IS_REPEATABLE)]
 class APIContext
 {
     const DEFAULT_ID_REQUIREMENT = '\d+';
@@ -93,19 +98,35 @@ class APIContext
     protected $idName = self::DEFAULT_ID_NAME;
 
     /**
+     * @var string|null
+     */
+    public $name = null;
+
+    /**
      * APIEntity constructor.
      * @param $values
      */
-    public function __construct($values)
+    public function __construct(
+        ?string $name = null,
+        ?string $uri = null,
+        array $actions = [],
+        array $types = [],
+        array $serializationGroups = [],
+        array $bindings = [],
+        string $idRequirement = self::DEFAULT_ID_REQUIREMENT,
+        string $idName = self::DEFAULT_ID_NAME,
+        array $security = []
+    )
     {
-        $this->uri                  = $values['uri']                    ?? null;
-        $this->actions              = $values['actions']                ?? [];
-        $this->types                = $values['types']                  ?? [];
-        $this->serializationGroups  = $values['serializationGroups']    ?? [];
-        $this->bindings             = $values['bindings']               ?? [];
-        $this->idRequirement        = $values['idRequirement']          ?? self::DEFAULT_ID_REQUIREMENT;
-        $this->idName               = $values['idName']                 ?? self::DEFAULT_ID_NAME;
-        $this->security             = $values['security']               ?? [];
+        $this->name                 = $name;
+        $this->uri                  = $uri;
+        $this->actions              = $actions;
+        $this->types                = $types;
+        $this->serializationGroups  = $serializationGroups;
+        $this->bindings             = $bindings;
+        $this->idRequirement        = $idRequirement;
+        $this->idName               = $idName;
+        $this->security             = $security;
     }
 
     /**

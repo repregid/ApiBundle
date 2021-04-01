@@ -95,7 +95,7 @@ final class ApiLoader extends Loader
         foreach ($annotations as $className => $annotation) {
 
             $shortName  = self::getShortName($className);
-            $contexts   = $annotation->getContexts();
+            $contexts   = $annotation->contexts;
 
             foreach ($contexts as $key => $context) {
 
@@ -104,7 +104,7 @@ final class ApiLoader extends Loader
                  */
                 if (is_string($context)) {
                     $key = $context;
-                    $context = new APIContext([]);
+                    $context = new APIContext();
                 }
 
                 $contextConfig  = $this->getContextConfig($key);
@@ -150,8 +150,8 @@ final class ApiLoader extends Loader
 
                 foreach ($actions as $actionName => $actionParams) {
 
-                    $filterType = $annotation->getFilterType();
-                    $formType   = $actionParams['type'] ?: $annotation->getFormType();
+                    $filterType = $annotation->filterType;
+                    $formType   = $actionParams['type'] ?: $annotation->formType;
                     $action     = $this->getAction($actionName, $formType, $filterType);
 
                     $groupSuffix    = $action->getDefault('groupSuffix');
@@ -167,7 +167,7 @@ final class ApiLoader extends Loader
                         'context'   => $key,
                         'entity'    => $className,
                         'groups'    => $groups,
-                        'security'  => $actionParams['security']
+                        'security'  => is_string($actionParams['security']) ? [$actionParams['security']] : $actionParams['security']
                     ]);
 
                     if ($action->hasRequirement('id')) {
@@ -180,12 +180,12 @@ final class ApiLoader extends Loader
 
                     if ($action->getDefault('_controller') === 'repregid_api.controller.crud:listAction') {
 
-                        $listBehavior = $annotation->getListWithSoftDeleteable() !== null
-                            ? $annotation->getListWithSoftDeleteable()
+                        $listBehavior = $annotation->listWithSoftDeleteable !== null
+                            ? $annotation->listWithSoftDeleteable
                             : $this->configurator->isListWithSoftDeleteable();
 
                         if (!$listBehavior) {
-                            $action->setDefault('softDeleteableFieldName', $annotation->getSoftDeleteableFieldName());
+                            $action->setDefault('softDeleteableFieldName', $annotation->softDeleteableFieldName);
                         }
                     }
 
@@ -209,7 +209,7 @@ final class ApiLoader extends Loader
     {
         foreach ($annotations as $className => $annotation) {
 
-            $subLists   = $annotation->getSubLists();
+            $subLists   = $annotation->subLists;
 
             foreach ($subLists as $subList) {
 
@@ -340,20 +340,42 @@ final class ApiLoader extends Loader
             /**
              * @var $annotation APIEntity
              */
-            $annotation = $reader->getClassAnnotation($reflectionClass, 'Repregid\\ApiBundle\\Annotation\\APIEntity');
+            $annotation = null;
+            if (PHP_VERSION_ID >= 80000) {
+                $attributes = $reflectionClass->getAttributes(APIEntity::class);
+                if (!empty($attributes)) {
+                    $annotation = $attributes[0]->newInstance();
+                }
+            }
+            if ($annotation === null) {
+                $annotation = $reader->getClassAnnotation($reflectionClass, APIEntity::class);
+            }
 
             if ($annotation) {
 
                 $softDeletable  = $this->getSoftDeleteable($reflectionClass, $reader);
                 if ($softDeletable) {
-                    $annotation->setSoftDeleteableFieldName($softDeletable->fieldName);
+                    $annotation->softDeleteableFieldName = $softDeletable->fieldName;
                 }
 
                 $result[$className] = $annotation;
 
-                foreach($reflectionClass->getProperties() as $reflectionProperty) {
+                if (PHP_VERSION_ID >= 80000) {
+                    foreach ($reflectionClass->getAttributes(APIContext::class) as $attribute) {
+                        /** @var APIContext $context */
+                        $context = $attribute->newInstance();
+                        $annotation->contexts[$context->name] = $context;
+                    }
+                }
 
+                foreach($reflectionClass->getProperties() as $reflectionProperty) {
                     $subLists = $reader->getPropertyAnnotations($reflectionProperty);
+
+                    if (PHP_VERSION_ID >= 80000) {
+                        foreach ($reflectionProperty->getAttributes(APISubList::class) as $attribute) {
+                            $subLists[] = $attribute->newInstance();
+                        }
+                    }
 
                     foreach ($subLists as $subList) {
                         if ($subList instanceof APISubList) {
@@ -379,7 +401,7 @@ final class ApiLoader extends Loader
                                 $subList->setListClass( $rel instanceof OneToMany ? $target : $className);
                             }
 
-                            $annotation->addSubList($subList);
+                            $annotation->subLists[] = $subList;
                         }
                     }
                 }
