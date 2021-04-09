@@ -91,10 +91,11 @@ class QueryBuilderUpdater
         QueryBuilder $qb,
         CommonFilter $filter,
         SearchEngineInterface $searchEngine = null,
-        string $target = null
+        string $target = null,
+        array $searchFields = []
     ) {
         if($filter->getQuery() && $searchEngine && $target) {
-            $searchResult = $searchEngine->findByTerm($filter->getQuery(), $target);
+            $searchResult = $searchEngine->findByTerm($filter->getQuery(), $target, $searchFields);
 
             $values = [];
             $ids = [];

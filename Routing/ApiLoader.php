@@ -164,10 +164,11 @@ final class ApiLoader extends Loader
                     $groups = $actionParams['groups'] ? $this->replaceDefault($actionParams['groups'], $defaultGroups) : $defaultGroups;
 
                     $action->addDefaults([
-                        'context'   => $key,
-                        'entity'    => $className,
-                        'groups'    => $groups,
-                        'security'  => is_string($actionParams['security']) ? [$actionParams['security']] : $actionParams['security']
+                        'context'       => $key,
+                        'entity'        => $className,
+                        'groups'        => $groups,
+                        'security'      => is_string($actionParams['security']) ? [$actionParams['security']] : $actionParams['security'],
+                        'searchFields'  => $context->getSearchFields(),
                     ]);
 
                     if ($action->hasRequirement('id')) {

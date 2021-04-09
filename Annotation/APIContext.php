@@ -67,6 +67,13 @@ class APIContext
     protected $security = [];
 
     /**
+     * Массив доп аргументов для поиска
+     * 
+     * @var array 
+     */
+    protected $searchFields = [];
+
+    /**
      * Связывание контекстов.
      *
      * В массив передаются именна контекстов с которыми нужно связать текущий.
@@ -115,7 +122,8 @@ class APIContext
         array $bindings = [],
         string $idRequirement = self::DEFAULT_ID_REQUIREMENT,
         string $idName = self::DEFAULT_ID_NAME,
-        array $security = []
+        array $security = [],
+        array $searchFields = []
     )
     {
         $this->name                 = $name;
@@ -127,6 +135,7 @@ class APIContext
         $this->idRequirement        = $idRequirement;
         $this->idName               = $idName;
         $this->security             = $security;
+        $this->searchFields         = $searchFields;
     }
 
     /**
@@ -191,5 +200,23 @@ class APIContext
     public function getSecurity(): array
     {
         return $this->security;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSearchFields(): array
+    {
+        return $this->searchFields;
+    }
+
+    /**
+     * @param array $searchFields
+     * @return APIContext
+     */
+    public function setSearchFields(array $searchFields): APIContext
+    {
+        $this->searchFields = $searchFields;
+        return $this;
     }
 }

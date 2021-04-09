@@ -139,7 +139,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $id = null,
         $field = null,
         $extraField = null,
-        $softDeleteableFieldName = null
+        $softDeleteableFieldName = null,
+        $searchFields = []
     ): View
     {
         $repo           = $this->getRepo($entity);
@@ -174,7 +175,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         ];
 
         try {
-            $filterBuilder = $this->prepareFilter($commonFilter, $entity, $filterType, $filterMethod, $softDeleteableFieldName, $extraFields);
+            $filterBuilder = $this->prepareFilter($commonFilter, $entity, $filterType, $filterMethod, $softDeleteableFieldName, $extraFields, $searchFields);
         } catch (FormErrorException $e) {
             return $this->renderFormError($e->getForm());
         }
@@ -217,7 +218,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
         string $filterType = DefaultFilterType::class,
         string $filterMethod = 'GET',
         ?string $softDeleteableFieldName = null,
-        array $extraFields = []): QueryBuilder
+        array $extraFields = [],
+        array $searchFields = []): QueryBuilder
     {
         $repo           = $this->getRepo($entity);
         $filterBuilder  = $repo->createQueryBuilder('x');
@@ -232,7 +234,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $em->getConfiguration()->addCustomStringFunction(   ToJsonbFunction::name,         ToJsonbFunction::class       );
 
         //Подня выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
-        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity);
+        QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity, $searchFields);
 
         //Из общей формы формы забираем предподготовленные формы для фильтрации
         //каждая форма порождает свою пачку join'ов, чтобы они не пересекались добавляем к алиасам индекс
