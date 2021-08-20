@@ -39,6 +39,11 @@ class CommonFilter
     protected $query = self::QUERY_DEFAULT;
 
     /**
+     * @var bool
+     */
+    protected $allowUnlimited = false;
+
+    /**
      * Filter constructor.
      */
     public function __construct()
@@ -145,6 +150,25 @@ class CommonFilter
     public function setQuery($query)
     {
         $this->query = $query;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isAllowUnlimited(): bool
+    {
+        return $this->allowUnlimited;
+    }
+
+    /**
+     * @param bool $allowUnlimited
+     * @return CommonFilter
+     */
+    public function setAllowUnlimited(bool $allowUnlimited): CommonFilter
+    {
+        $this->allowUnlimited = $allowUnlimited;
 
         return $this;
     }

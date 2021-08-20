@@ -28,11 +28,16 @@ class QueryBuilderUpdater
         $pagerQB    = clone $qb;
         $pager      = new Paginator($pagerQB->getQuery(), $fetchJoinCollection);
 
-        return new ResultProvider(
-            $pager->getIterator()->getArrayCopy(),
-            $pager->count(),
-            $filter->getPageSize()
-        );
+        $totalCount = $pager->count();
+        $pageSize   = $filter->getPageSize();
+
+        if ($pageSize <= 0) {
+            $pageSize = $filter->isAllowUnlimited()
+                ? ($totalCount ?: 1)
+                : CommonFilter::PAGE_SIZE_DEFAULT;
+        }
+
+        return new ResultProvider($pager->getIterator()->getArrayCopy(), $totalCount, $pageSize);
     }
 
     /**
@@ -75,9 +80,11 @@ class QueryBuilderUpdater
         $page       = $filter->getPage();
         $pageSize   = $filter->getPageSize();
 
-        if($pageSize > 0) {
+        if ($pageSize > 0) {
             $qb->setMaxResults($pageSize);
             $qb->setFirstResult(($page - 1) * $pageSize);
+        } elseif (!$filter->isAllowUnlimited()) {
+            $qb->setMaxResults(CommonFilter::PAGE_SIZE_DEFAULT);
         }
     }
 

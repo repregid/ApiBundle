@@ -169,6 +169,7 @@ final class ApiLoader extends Loader
                         'groups'        => $groups,
                         'security'      => is_string($actionParams['security']) ? [$actionParams['security']] : $actionParams['security'],
                         'searchFields'  => $context->getSearchFields(),
+                        'allowUnlimited'=> $annotation->allowUnlimited
                     ]);
 
                     if ($action->hasRequirement('id')) {

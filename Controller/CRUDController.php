@@ -140,7 +140,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $field = null,
         $extraField = null,
         $softDeleteableFieldName = null,
-        $searchFields = []
+        $searchFields = [],
+        $allowUnlimited = false
     ): View
     {
         $repo           = $this->getRepo($entity);
@@ -170,6 +171,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
             return $this->renderFormError($form);
         }
 
+        $commonFilter->setAllowUnlimited($allowUnlimited);
+
         $extraFields = [
             $field => false
         ];
@@ -195,7 +198,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
             print_r($filterBuilder->getQuery()->getParameters()->toArray());
             die();
          /*/
-         //*/
+        //*/
 
         return $this->renderResultProvider($postResultEvent->getResult(), $groups);
     }

@@ -48,18 +48,30 @@ class APIEntity
     public $softDeleteableFieldName;
 
     /**
+     * При выборе списка объектов разрешает передать параметр PageSize=0 и получить все результаты разом
+     * @var bool
+     */
+    public $allowUnlimited = false;
+
+    /**
      * APIEntity constructor.
-     * @param $values
+     * @param array $contexts
+     * @param string|null $formType
+     * @param string|null $filterType
+     * @param bool|null $listWithSoftDeleteable
+     * @param bool $allowUnlimited
      */
     public function __construct(
         array $contexts = [],
         ?string $formType = null,
         ?string $filterType = null,
-        ?bool $listWithSoftDeleteable = false)
-    {
+        ?bool $listWithSoftDeleteable = false,
+        bool $allowUnlimited = false
+    ) {
         $this->contexts                 = $contexts;
         $this->formType                 = $formType;
         $this->filterType               = $filterType;
         $this->listWithSoftDeleteable   = $listWithSoftDeleteable;
+        $this->allowUnlimited           = $allowUnlimited;
     }
 }
