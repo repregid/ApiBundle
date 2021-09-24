@@ -20,8 +20,10 @@ use Lexik\Bundle\FormFilterBundle\Filter\Form\Type\NumberRangeFilterType;
 use Lexik\Bundle\FormFilterBundle\Filter\Query\QueryInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
+use Repregid\ApiBundle\DQLFunction\JsonbExtractPathTextFunction;
 use Repregid\ApiBundle\DQLFunction\ToJsonbFunction;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\CollectionFilterType;
+use Scienta\DoctrineJsonFunctions\Query\AST\Functions\Postgresql\JsonGetPathText;
 use Symfony\Component\Form\FormInterface;
 
 /**
@@ -35,12 +37,13 @@ class FilterService
     const OPERATOR_IS_NULL      = 'IS NULL';
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
     const OPERATOR_BETWEEN      = 'BETWEEN';
-    const OPERATORS_JSON_ARRAY  = '?|';
+    const OPERATOR_JSON_ARRAY   = '?|';
+    const OPERATOR_JSON_IN      = 'JIN';
 
-    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATORS_JSON_ARRAY];
-    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN];
+    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN];
+    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN];
     const OPERATORS_ONE_SIDE =  [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATORS_JSON_ARRAY];
+    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN];
 
     const DELIMITER = ',';
 
@@ -288,88 +291,77 @@ class FilterService
                              * 2.1  Если IN, то преобразовываем поле в коллекцию таких полей.
                              */
                             case self::OPERATOR_IN:
-                                {
-                                    $type = CollectionFilterType::class;
-                                    $options = [
-                                        'entry_type'    => get_class($childType),
-                                        'entry_options' => $config->getOptions(),
-                                        'allow_add'     => true
-                                    ];
-                                    $this->values[$field] = $mValue;
-                                    $applyFilter = true;
-                                    break;
-                                }
-
-                            case self::OPERATORS_JSON_ARRAY:
-                                {
-                                    $type = CollectionFilterType::class;
-                                    $options = [
-                                        'entry_type'    => get_class($childType),
-                                        'entry_options' => $config->getOptions(),
-                                        'allow_add'     => true
-                                    ];
-                                    $this->values[$field] = $mValue;
-                                    $applyFilter = true;
-                                    break;
-                                }
+                            case self::OPERATOR_JSON_ARRAY:
+                            case self::OPERATOR_JSON_IN:
+                            {
+                                $type = CollectionFilterType::class;
+                                $options = [
+                                    'entry_type'    => get_class($childType),
+                                    'entry_options' => $config->getOptions(),
+                                    'allow_add'     => true
+                                ];
+                                $this->values[$field] = $mValue;
+                                $applyFilter = true;
+                                break;
+                            }
                             /**
                              * 2.2  Если between, то преобразовываем поле в соответствующий тип Range.
                              *      В данном случае нам необходимо чтобы значение состояло минимум из двух элементов.
                              */
                             case self::OPERATOR_BETWEEN:
-                                {
-                                    if (count($mValue) < 2) {
-                                        break;
-                                    }
-                                    switch (get_class($childType)) {
-                                        case DateTimeFilterType::class:
-                                            {
-                                                $type = DateTimeRangeFilterType::class;
-                                                $options = [
-                                                    'left_datetime_options'     => $config->getOptions(),
-                                                    'right_datetime_options'    => $config->getOptions()
-                                                ];
-                                                $this->values[$field] = [
-                                                    'left_datetime'             => $mValue[0],
-                                                    'right_datetime'            => $mValue[1]
-                                                ];
-                                                break;
-                                            }
-                                        case DateFilterType::class:
-                                        {
-                                            $type = DateRangeFilterType::class;
-                                            $options = [
-                                                'left_date_options'     => $config->getOptions(),
-                                                'right_date_options'    => $config->getOptions()
-                                            ];
-                                            $this->values[$field] = [
-                                                'left_date'             => $mValue[0],
-                                                'right_date'            => $mValue[1]
-                                            ];
-                                            break;
-                                        }
-                                        case NumberFilterType::class:
-                                            {
-                                                $type = NumberRangeFilterType::class;
-                                                $options = [
-                                                    'left_number_options' => array_merge(
-                                                        $config->getOptions(),
-                                                        ['condition_operator' => FilterOperands::OPERATOR_GREATER_THAN_EQUAL]
-                                                    ),
-                                                    'right_number_options' => array_merge(
-                                                        $config->getOptions(),
-                                                        ['condition_operator' => FilterOperands::OPERATOR_LOWER_THAN_EQUAL]
-                                                    )
-                                                ];
-                                                $this->values[$field] = [
-                                                    'left_number'               => $mValue[0],
-                                                    'right_number'              => $mValue[1]
-                                                ];
-                                                break;
-                                            }
-                                    }
+                            {
+                                if (count($mValue) < 2) {
                                     break;
                                 }
+                                switch (get_class($childType)) {
+                                    case DateTimeFilterType::class:
+                                    {
+                                        $type = DateTimeRangeFilterType::class;
+                                        $options = [
+                                            'left_datetime_options'     => $config->getOptions(),
+                                            'right_datetime_options'    => $config->getOptions()
+                                        ];
+                                        $this->values[$field] = [
+                                            'left_datetime'             => $mValue[0],
+                                            'right_datetime'            => $mValue[1]
+                                        ];
+                                        break;
+                                    }
+                                    case DateFilterType::class:
+                                    {
+                                        $type = DateRangeFilterType::class;
+                                        $options = [
+                                            'left_date_options'     => $config->getOptions(),
+                                            'right_date_options'    => $config->getOptions()
+                                        ];
+                                        $this->values[$field] = [
+                                            'left_date'             => $mValue[0],
+                                            'right_date'            => $mValue[1]
+                                        ];
+                                        break;
+                                    }
+                                    case NumberFilterType::class:
+                                    {
+                                        $type = NumberRangeFilterType::class;
+                                        $options = [
+                                            'left_number_options' => array_merge(
+                                                $config->getOptions(),
+                                                ['condition_operator' => FilterOperands::OPERATOR_GREATER_THAN_EQUAL]
+                                            ),
+                                            'right_number_options' => array_merge(
+                                                $config->getOptions(),
+                                                ['condition_operator' => FilterOperands::OPERATOR_LOWER_THAN_EQUAL]
+                                            )
+                                        ];
+                                        $this->values[$field] = [
+                                            'left_number'               => $mValue[0],
+                                            'right_number'              => $mValue[1]
+                                        ];
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
                         }
                     }
 
@@ -403,35 +395,55 @@ class FilterService
             if (in_array($comparison, self::OPERATORS_TWO_SIDES)) {
                 $rvalue = ':' . $paramName;
 
-                if ($comparison === self::OPERATOR_LIKE) {
-                    $comparison = 'LIKE';
-                    $paramValue = mb_strtolower($paramValue, 'UTF-8');
-                    $paramValue = "%$paramValue%";
-                    $field      = "LOWER($field)";
-                }
+                switch ($comparison) {
+                    case self::OPERATOR_LIKE: {
+                        $comparison = 'LIKE';
+                        $paramValue = mb_strtolower($paramValue, 'UTF-8');
+                        $paramValue = "%$paramValue%";
+                        $field      = "LOWER($field)";
 
-                if ($comparison === self::OPERATORS_JSON_ARRAY) {
-                    $comparison = "";
-
-                    $count  = 0;
-                    $values = $paramValue;
-                    foreach ($values as $value) {
-                        if ($count == 0) {
-                            $paramValue = "{" . $value;
-                        } else {
-                            $paramValue .= ", " . $value;
-                        }
-                        $count++;
+                        break;
                     }
-                    $paramValue .= "}";
+                    case self::OPERATOR_JSON_ARRAY: {
+                        $comparison = "";
 
-                    $field = JsonbExistAnyFunction::name . "(" . ToJsonbFunction::name . "(" . $field . "), ";
-                    $rvalue = " " . $rvalue . ") = true";
-                }
+                        $count  = 0;
+                        $values = $paramValue;
+                        foreach ($values as $value) {
+                            if ($count == 0) {
+                                $paramValue = "{" . $value;
+                            } else {
+                                $paramValue .= ", " . $value;
+                            }
+                            $count++;
+                        }
+                        $paramValue .= "}";
 
-                if ($comparison === self::OPERATOR_IN) {
-                    $paramValue = [$paramValue, Connection::PARAM_STR_ARRAY];
-                    $rvalue = '(' . $rvalue . ')';
+                        $field = JsonbExistAnyFunction::name . "(" . ToJsonbFunction::name . "(" . $field . "), ";
+                        $rvalue = " " . $rvalue . ") = true";
+
+                        break;
+                    }
+                    case self::OPERATOR_JSON_IN: {
+                        $comparison = self::OPERATOR_IN;
+
+                        $jField = array_shift($paramValue);
+                        $jField = explode('.', $jField);
+                        $jField = '\'{'.implode(',', $jField).'}\'';
+
+                        $field = JsonGetPathText::FUNCTION_NAME . "(" . $field . ", $jField )";
+                        $rvalue = '(' . $rvalue . ')';
+
+                        $paramValue = [$paramValue, Connection::PARAM_STR_ARRAY];
+
+                        break;
+                    }
+                    case self::OPERATOR_IN: {
+                        $paramValue = [$paramValue, Connection::PARAM_STR_ARRAY];
+                        $rvalue = '(' . $rvalue . ')';
+
+                        break;
+                    }
                 }
 
                 $expr = new Comparison($field, $comparison, $rvalue);

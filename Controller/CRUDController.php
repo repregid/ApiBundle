@@ -236,7 +236,7 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $em->getConfiguration()->addCustomStringFunction(   JsonbExistAnyFunction::name,   JsonbExistAnyFunction::class );
         $em->getConfiguration()->addCustomStringFunction(   ToJsonbFunction::name,         ToJsonbFunction::class       );
 
-        //Подня выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
+        //Поднял выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
         QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity, $searchFields);
 
         //Из общей формы формы забираем предподготовленные формы для фильтрации
