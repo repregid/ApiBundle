@@ -481,6 +481,10 @@ class FilterService
 
                         break;
                     }
+                    default: {
+                        $expr = new Comparison($field, $comparison, $rvalue);
+                        $param = [$paramName => $paramValue];
+                    }
                 }
             }
 
