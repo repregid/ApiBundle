@@ -38,12 +38,14 @@ class FilterService
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
     const OPERATOR_BETWEEN      = 'BETWEEN';
     const OPERATOR_JSON_ARRAY   = '?|';
-    const OPERATOR_JSON_IN      = 'JIN';
+    const OPERATOR_JSON_IN          = 'JIN';
+    const OPERATOR_JSON_IS_NULL     = 'JISNULL';
+    const OPERATOR_JSON_IS_NOT_NULL = 'JISNOTNULL';
 
     const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN];
-    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN];
+    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL];
     const OPERATORS_ONE_SIDE =  [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN];
+    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL];
 
     const DELIMITER = ',';
 
@@ -397,15 +399,20 @@ class FilterService
 
                 switch ($comparison) {
                     case self::OPERATOR_LIKE: {
-                        $comparison = 'LIKE';
                         $paramValue = mb_strtolower($paramValue, 'UTF-8');
                         $paramValue = "%$paramValue%";
-                        $field      = "LOWER($field)";
+
+                        $expr = new Comparison(
+                            "LOWER($field)",
+                            'LIKE',
+                            $rvalue
+                        );
+
+                        $param = [$paramName => $paramValue];
 
                         break;
                     }
                     case self::OPERATOR_JSON_ARRAY: {
-                        $comparison = "";
 
                         $count  = 0;
                         $values = $paramValue;
@@ -419,35 +426,62 @@ class FilterService
                         }
                         $paramValue .= "}";
 
-                        $field = JsonbExistAnyFunction::name . "(" . ToJsonbFunction::name . "(" . $field . "), ";
-                        $rvalue = " " . $rvalue . ") = true";
+                        $expr = new Comparison(
+                            JsonbExistAnyFunction::name . "(" . ToJsonbFunction::name . "(" . $field . "), ",
+                            '',
+                            " " . $rvalue . ") = true"
+                        );
+
+                        $param = [$paramName => $paramValue];
 
                         break;
                     }
                     case self::OPERATOR_JSON_IN: {
-                        $comparison = self::OPERATOR_IN;
 
                         $jField = array_shift($paramValue);
                         $jField = explode('.', $jField);
                         $jField = '\'{'.implode(',', $jField).'}\'';
 
-                        $field = JsonGetPathText::FUNCTION_NAME . "(" . $field . ", $jField )";
-                        $rvalue = '(' . $rvalue . ')';
+                        $expr = new Comparison(
+                            JsonGetPathText::FUNCTION_NAME . "(" . $field . ", $jField )",
+                            self::OPERATOR_IN,
+                            '(' . $rvalue . ')'
+                        );
 
-                        $paramValue = [$paramValue, Connection::PARAM_STR_ARRAY];
+                        $param = [
+                            $paramName => [$paramValue, Connection::PARAM_STR_ARRAY]
+                        ];
+
+                        break;
+                    }
+                    case self::OPERATOR_JSON_IS_NULL:
+                    case self::OPERATOR_JSON_IS_NOT_NULL: {
+
+                        $jField = explode('.', $paramValue);
+                        $jField = '\'{'.implode(',', $jField).'}\'';
+
+                        $expr = new Comparison(
+                            JsonGetPathText::FUNCTION_NAME . "(" . $field . ", $jField )",
+                            $comparison == self::OPERATOR_JSON_IS_NULL ? self::OPERATOR_IS_NULL : self::OPERATOR_IS_NOT_NULL,
+                            ''
+                        );
 
                         break;
                     }
                     case self::OPERATOR_IN: {
-                        $paramValue = [$paramValue, Connection::PARAM_STR_ARRAY];
-                        $rvalue = '(' . $rvalue . ')';
+                        $expr = new Comparison(
+                            $field,
+                            $comparison,
+                            '(' . $rvalue . ')'
+                        );
+
+                        $param = [
+                            $paramName => [$paramValue, Connection::PARAM_STR_ARRAY]
+                        ];
 
                         break;
                     }
                 }
-
-                $expr = new Comparison($field, $comparison, $rvalue);
-                $param = [$paramName => $paramValue];
             }
 
             return $filterQuery->createCondition($expr, $param);
