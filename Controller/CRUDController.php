@@ -125,7 +125,11 @@ class CRUDController extends APIController implements CRUDControllerInterface
      * @param string $filterMethod
      * @param null $id - ID объекта фильтрации (для вложенных роутов)
      * @param null $field - название поля фильтрации (для вложенных роутов)
+     * @param null $extraField
      * @param string|null $softDeleteableFieldName
+     * @param array $searchFields
+     * @param false $allowUnlimited
+     * @param false $infinitePages
      * @return View
      */
     public function listAction(
@@ -141,7 +145,8 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $extraField = null,
         $softDeleteableFieldName = null,
         $searchFields = [],
-        $allowUnlimited = false
+        $allowUnlimited = false,
+        $infinitePages = false
     ): View
     {
         $repo           = $this->getRepo($entity);
@@ -171,7 +176,9 @@ class CRUDController extends APIController implements CRUDControllerInterface
             return $this->renderFormError($form);
         }
 
-        $commonFilter->setAllowUnlimited($allowUnlimited);
+        $commonFilter
+            ->setAllowUnlimited($allowUnlimited)
+            ->setInfinitePages($infinitePages);
 
         $extraFields = [
             $field => false
@@ -228,7 +235,6 @@ class CRUDController extends APIController implements CRUDControllerInterface
         $filterBuilder  = $repo->createQueryBuilder('x');
         $ignoreDeleted    = true;
         $updater = $this->filterBuilderUpdater;
-
 
         //инициализация кастомных функций
         $em = $filterBuilder->getEntityManager();

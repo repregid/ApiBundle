@@ -44,6 +44,11 @@ class CommonFilter
     protected $allowUnlimited = false;
 
     /**
+     * @var bool
+     */
+    protected $infinitePages = false;
+
+    /**
      * Filter constructor.
      */
     public function __construct()
@@ -169,6 +174,25 @@ class CommonFilter
     public function setAllowUnlimited(bool $allowUnlimited): CommonFilter
     {
         $this->allowUnlimited = $allowUnlimited;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isInfinitePages(): bool
+    {
+        return $this->infinitePages;
+    }
+
+    /**
+     * @param bool $infinitePages
+     * @return CommonFilter
+     */
+    public function setInfinitePages(bool $infinitePages): CommonFilter
+    {
+        $this->infinitePages = $infinitePages;
 
         return $this;
     }

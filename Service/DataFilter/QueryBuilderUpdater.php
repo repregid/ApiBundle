@@ -28,7 +28,7 @@ class QueryBuilderUpdater
         $pagerQB    = clone $qb;
         $pager      = new Paginator($pagerQB->getQuery(), $fetchJoinCollection);
 
-        $totalCount = $pager->count();
+        $totalCount = $filter->isInfinitePages() ? 0 : $pager->count();
         $pageSize   = $filter->getPageSize();
 
         if ($pageSize <= 0) {
@@ -37,7 +37,11 @@ class QueryBuilderUpdater
                 : CommonFilter::PAGE_SIZE_DEFAULT;
         }
 
-        return new ResultProvider($pager->getIterator()->getArrayCopy(), $totalCount, $pageSize);
+        $results = $filter->isInfinitePages()
+            ? $qb->getQuery()->getResult()
+            : $pager->getIterator()->getArrayCopy();
+
+        return new ResultProvider($results, $totalCount, $pageSize);
     }
 
     /**
