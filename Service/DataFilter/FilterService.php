@@ -41,11 +41,13 @@ class FilterService
     const OPERATOR_JSON_IN          = 'JIN';
     const OPERATOR_JSON_IS_NULL     = 'JISNULL';
     const OPERATOR_JSON_IS_NOT_NULL = 'JISNOTNULL';
+    const OPERATOR_INSTANCE_OF      = 'IOF';
+    const OPERATOR_INSTANCE_OF_IN   = 'IOFIN';
 
-    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN];
-    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL];
+    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_INSTANCE_OF_IN];
+    const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL, self::OPERATOR_INSTANCE_OF, self::OPERATOR_INSTANCE_OF_IN];
     const OPERATORS_ONE_SIDE =  [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL];
+    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL, self::OPERATOR_INSTANCE_OF, self::OPERATOR_INSTANCE_OF_IN];
 
     const DELIMITER = ',';
 
@@ -295,6 +297,7 @@ class FilterService
                             case self::OPERATOR_IN:
                             case self::OPERATOR_JSON_ARRAY:
                             case self::OPERATOR_JSON_IN:
+                            case self::OPERATOR_INSTANCE_OF_IN:
                             {
                                 $type = CollectionFilterType::class;
                                 $options = [
@@ -387,7 +390,7 @@ class FilterService
             if (empty($values['value'])) {
                 return null;
             }
-
+            
             $paramName = sprintf('p_%s', str_replace('.', '_', $field));
 
             $paramValue = $values['value'];
@@ -478,6 +481,38 @@ class FilterService
                         $param = [
                             $paramName => [$paramValue, Connection::PARAM_STR_ARRAY]
                         ];
+
+                        break;
+                    }
+                    case self::OPERATOR_INSTANCE_OF: {
+                        $parts = explode('.', $field);
+                        array_pop($parts);
+
+                        $expr = new Comparison(
+                            implode('.', $parts),
+                            ' INSTANCE OF ',
+                            $paramValue
+                        );
+
+
+                        break;
+                    }
+                    case self::OPERATOR_INSTANCE_OF_IN: {
+                        $parts = explode('.', $field);
+                        array_pop($parts);
+
+                        $comparisons = [];
+
+                        $expr = new Expr\Orx();
+
+                        foreach ($paramValue as $discriminator) {
+                            $expr->add(new Comparison(
+                                implode('.', $parts),
+                                ' INSTANCE OF ',
+                                $discriminator
+                            ));
+                        }
+
 
                         break;
                     }
