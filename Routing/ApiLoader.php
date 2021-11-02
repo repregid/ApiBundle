@@ -181,7 +181,8 @@ final class ApiLoader extends Loader
                         $action->setDefault('idName', $context->getIdName());
                     }
 
-                    if ($action->getDefault('_controller') === 'repregid_api.controller.crud:listAction') {
+                    if ($action->getDefault('_controller') === 'repregid_api.controller.crud:listAction'
+                        || $action->getDefault('_controller') === 'repregid_api.controller.crud::listAction') {
 
                         $listBehavior = $annotation->listWithSoftDeleteable !== null
                             ? $annotation->listWithSoftDeleteable
@@ -360,6 +361,9 @@ final class ApiLoader extends Loader
                 if ($softDeletable) {
                     $annotation->softDeleteableFieldName = $softDeletable->fieldName;
                 }
+                if ($reflectionClass->implementsInterface('Knp\DoctrineBehaviors\Contract\Entity\SoftDeletableInterface')) {
+                    $annotation->softDeleteableFieldName = 'deletedAt';
+                }
 
                 $result[$className] = $annotation;
 
@@ -387,6 +391,18 @@ final class ApiLoader extends Loader
                                 $reader->getPropertyAnnotation($reflectionProperty, 'Doctrine\\ORM\\Mapping\\OneToMany') ?:
                                 $reader->getPropertyAnnotation($reflectionProperty, 'Doctrine\\ORM\\Mapping\\ManyToMany')
                             ;
+                            if (PHP_VERSION_ID >= 80000 && !$rel) {
+                                $attrs = $reflectionProperty->getAttributes(ManyToOne::class);
+                                if (empty($attrs)) {
+                                    $attrs = $reflectionProperty->getAttributes(OneToMany::class);
+                                }
+                                if (empty($attrs)) {
+                                    $attrs = $reflectionProperty->getAttributes(ManyToMany::class);
+                                }
+                                if (!empty($attrs)) {
+                                    $rel = $attrs[0]->newInstance();
+                                }
+                            }
 
                             if(!$rel) {
                                 continue;
