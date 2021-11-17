@@ -361,7 +361,8 @@ final class ApiLoader extends Loader
                 if ($softDeletable) {
                     $annotation->softDeleteableFieldName = $softDeletable->fieldName;
                 }
-                if ($reflectionClass->implementsInterface('Knp\DoctrineBehaviors\Contract\Entity\SoftDeletableInterface')) {
+                $softDeletableInterface = 'Knp\DoctrineBehaviors\Contract\Entity\SoftDeletableInterface';
+                if (interface_exists($softDeletableInterface) && $reflectionClass->implementsInterface($softDeletableInterface)) {
                     $annotation->softDeleteableFieldName = 'deletedAt';
                 }
 
