@@ -21,6 +21,7 @@ use Lexik\Bundle\FormFilterBundle\Filter\Query\QueryInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
 use Repregid\ApiBundle\DQLFunction\JsonbExtractPathTextFunction;
+use Repregid\ApiBundle\DQLFunction\JsonExtractPathTextFunction;
 use Repregid\ApiBundle\DQLFunction\ToJsonbFunction;
 use Repregid\ApiBundle\Service\DataFilter\Form\Type\CollectionFilterType;
 use Scienta\DoctrineJsonFunctions\Query\AST\Functions\Postgresql\JsonGetPathText;
@@ -38,16 +39,19 @@ class FilterService
     const OPERATOR_IS_NOT_NULL  = 'IS NOT NULL';
     const OPERATOR_BETWEEN      = 'BETWEEN';
     const OPERATOR_JSON_ARRAY   = '?|';
+    // example: extraData#>>company.id,667 - вернет true
+    // для такой колонки extraData  с данными {"company":{"id": 667}}, так же работает для строк
+    const OPERATOR_JSON_EXTRACT_PATH_EQUAL = "#>>";
     const OPERATOR_JSON_IN          = 'JIN';
     const OPERATOR_JSON_IS_NULL     = 'JISNULL';
     const OPERATOR_JSON_IS_NOT_NULL = 'JISNOTNULL';
     const OPERATOR_INSTANCE_OF      = 'IOF';
     const OPERATOR_INSTANCE_OF_IN   = 'IOFIN';
 
-    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_INSTANCE_OF_IN];
+    const OPERATORS_MULTIPLE =  [self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_INSTANCE_OF_IN, self::OPERATOR_JSON_EXTRACT_PATH_EQUAL];
     const OPERATORS_COMPLEX =   [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL, self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL, self::OPERATOR_INSTANCE_OF, self::OPERATOR_INSTANCE_OF_IN];
     const OPERATORS_ONE_SIDE =  [self::OPERATOR_IS_NULL, self::OPERATOR_IS_NOT_NULL];
-    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL, self::OPERATOR_INSTANCE_OF, self::OPERATOR_INSTANCE_OF_IN];
+    const OPERATORS_TWO_SIDES = ['<>', '<=', '>=', '>', '<', self::OPERATOR_LIKE, '=', self::OPERATOR_IN, self::OPERATOR_BETWEEN, self::OPERATOR_JSON_ARRAY, self::OPERATOR_JSON_EXTRACT_PATH_EQUAL, self::OPERATOR_JSON_IN, self::OPERATOR_JSON_IS_NULL, self::OPERATOR_JSON_IS_NOT_NULL, self::OPERATOR_INSTANCE_OF, self::OPERATOR_INSTANCE_OF_IN];
 
     const DELIMITER = ',';
 
@@ -298,6 +302,7 @@ class FilterService
                             case self::OPERATOR_JSON_ARRAY:
                             case self::OPERATOR_JSON_IN:
                             case self::OPERATOR_INSTANCE_OF_IN:
+                            case self::OPERATOR_JSON_EXTRACT_PATH_EQUAL:
                             {
                                 $type = CollectionFilterType::class;
                                 $options = [
@@ -433,6 +438,25 @@ class FilterService
                             JsonbExistAnyFunction::name . "(" . ToJsonbFunction::name . "(" . $field . "), ",
                             '',
                             " " . $rvalue . ") = true"
+                        );
+
+                        $param = [$paramName => $paramValue];
+
+                        break;
+                    }
+                    case self::OPERATOR_JSON_EXTRACT_PATH_EQUAL: {
+
+                        $values = $paramValue;
+                        $pathArray = array_map(function(string $x){
+                            return "'$x'";
+                        }, explode('.', $values[0]));
+                        $path = implode(',', $pathArray);
+                        $paramValue = $values[1];
+
+                        $expr = new Comparison(
+                            sprintf("%s(%s, ", JsonExtractPathTextFunction::name, $field),
+                            '',
+                            sprintf(" %s) = %s", $path, $rvalue)
                         );
 
                         $param = [$paramName => $paramValue];

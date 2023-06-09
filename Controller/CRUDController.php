@@ -9,6 +9,7 @@ use Doctrine\Persistence\ObjectManager;
 use FOS\RestBundle\View\View;
 use Lexik\Bundle\FormFilterBundle\Filter\FilterBuilderUpdaterInterface;
 use Repregid\ApiBundle\DQLFunction\JsonbExistAnyFunction;
+use Repregid\ApiBundle\DQLFunction\JsonExtractPathTextFunction;
 use Repregid\ApiBundle\DQLFunction\OperatorFunction;
 use Repregid\ApiBundle\DQLFunction\JsonbArrayFunction;
 use Repregid\ApiBundle\DQLFunction\ToJsonbFunction;
@@ -238,9 +239,10 @@ class CRUDController extends APIController implements CRUDControllerInterface
 
         //инициализация кастомных функций
         $em = $filterBuilder->getEntityManager();
-        $em->getConfiguration()->addCustomNumericFunction(  OperatorFunction::name,        OperatorFunction::class      );
-        $em->getConfiguration()->addCustomStringFunction(   JsonbExistAnyFunction::name,   JsonbExistAnyFunction::class );
-        $em->getConfiguration()->addCustomStringFunction(   ToJsonbFunction::name,         ToJsonbFunction::class       );
+        $em->getConfiguration()->addCustomNumericFunction(  OperatorFunction::name,            OperatorFunction::class      );
+        $em->getConfiguration()->addCustomStringFunction(   JsonbExistAnyFunction::name,       JsonbExistAnyFunction::class );
+        $em->getConfiguration()->addCustomStringFunction(   JsonExtractPathTextFunction::name, JsonExtractPathTextFunction::class );
+        $em->getConfiguration()->addCustomStringFunction(   ToJsonbFunction::name,             ToJsonbFunction::class       );
 
         //Поднял выше - чтобы в случае поиска в первую очередь сортировать по весу результата поиска
         QueryBuilderUpdater::addSearch($filterBuilder, $commonFilter, $this->searchEngine, $entity, $searchFields);
